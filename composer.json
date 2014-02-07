@@ -1,0 +1,31 @@
+{
+    "name": "amcsi/http-proxy",
+    "description": "A script for proxying HTTP requests to any given URL",
+    "keywords": ["http", "proxy"],
+    "homepage": "https://github.com/amcsi/php-http-proxy",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Attila Szeremi",
+            "email": "amcsi@mailbox.hu",
+            "homepage": "http://stackoverflow.com/users/1381550/szeremi-attila",
+            "role": "Developer"
+        }
+    ],
+    "support": {
+        "email": "amcsi@mailbox.hu",
+        "issues": "https://github.com/amcsi/php-http-proxy/issues",
+        "source": "https://github.com/amcsi/php-http-proxy"
+    },
+    "require": {
+        "php": ">=5.2.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": ">=3.6.0"
+    },
+    "autoload": {
+        "psr-0": {
+            "Amcsi_HttpProxy_": "src"
+        }
+    }
+}
