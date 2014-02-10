@@ -10,6 +10,7 @@ class Amcsi_HttpProxy_Proxy
      *
      * p: POST should be taken into account when checking for REQUEST
      *  variables. Also, POST should be used for proxified urls
+     * r: Use RewriteRule based rewriting
      * u: Rewrite all XML/HTML attributes to make all urls in them
      *  proxified.
      * 
@@ -17,6 +18,17 @@ class Amcsi_HttpProxy_Proxy
      * @access protected
      */
     protected $optChars;
+    protected $rewriteDetails;
+    /**
+     * url 
+     * 
+     * @var Amcsi_HttpProxy_Url
+     * @access protected
+     */
+    protected $url;
+
+    protected $requestUri;
+    protected $host;
 
     public function setConf(array $conf)
     {
@@ -56,6 +68,36 @@ class Amcsi_HttpProxy_Proxy
         return $this;
     }
 
+    public function getRewriteDetails()
+    {
+        if (!$this->rewriteDetails) {
+            $url = $this->getGetPost('_url');
+            if (!$url) {
+                $url = $this->getGetPost('url');
+            }
+            $reqUri = getenv('REQUEST_URI');
+        }
+    }
+
+    public function getRequestUri()
+    {
+        if (!$this->requestUri) {
+            $this->requestUri = getenv('REQUEST_URI');
+        }
+        return $this->requestUri;
+    }
+
+    public function getHost()
+    {
+        if (!$this->host) {
+            $this->host = getenv('HTTP_HOST');
+            if (!$this->host) {
+                $this->host = getenv('SERVER_ADDR');
+            }
+        }
+        return $this->host;
+    }
+
     public function dispatch() {
         $opts = isset($_REQUEST['opts']) ? $_REQUEST['opts'] : '';
         $this->setOptsString($opts);
@@ -82,6 +124,8 @@ class Amcsi_HttpProxy_Proxy
                 if (!$url) {
                     $url = $this->getGetPost('url');
                 }
+                $url = new Amcsi_HttpProxy_Url($url);
+                $this->url = $url;
                 $reqHeaders = apache_request_headers();
                 $post = file_get_contents('php://input');
                 $this->request($url, $reqHeaders, $post);;
@@ -99,13 +143,14 @@ class Amcsi_HttpProxy_Proxy
     {
         $headers = array ();
         foreach ($reqHeaders as $key => $val) {
-            if ('Host' == $key) {
+            if ('Host' == $key || 'Content-Length' == $key) {
                 continue;
             }
             if ('SOAPAction' == $key) {
                 $headers[] = 'SOAPAction: ' . trim($reqHeaders[$key], '"');
-            }
-            else {
+            } elseif ('Referer' == $key && $this->isOptSet('r')) {
+                $headers[] = 'Referer: ' . $this->reverseReplaceUrl($val);
+            } else {
                 $headers[] = sprintf('%s: %s', $key, $reqHeaders[$key]);
             }
         }
@@ -130,6 +175,10 @@ class Amcsi_HttpProxy_Proxy
         if ($post) {
             $http['content'] = $post;
             $headers[] = 'Content-Length: ' . strlen($post);
+        } else {
+            if (isset($reqHeaders['Content-Length'])) {
+                $headers[] = 'Content-Length: ' . $reqHeaders['Content-Length'];
+            }
         }
         $header = join("\r\n", $headers);
         $http['header'] = $header;
@@ -165,8 +214,10 @@ class Amcsi_HttpProxy_Proxy
                     header(sprintf('Set-Cookie: %s', $cookie->getFilteredSetCookie()));
                     continue;
                 }
-                if (0 === strpos($hrh, 'Content-Type')) {
-                    header($hrh);
+                if (0 === strpos($hrh, 'Location:') && $this->isOptSet('u')) {
+                    $location = substr($hrh, 10);
+                    $location = $this->replaceUrl($location);
+                    header("Location: $hrh");
                 }
                 // I don't remember why I'm doing this, since I'm overwriting the Content-Length anyway
                 else if (0 !== strpos($hrh, 'Content-Length')) {
@@ -270,13 +321,81 @@ class Amcsi_HttpProxy_Proxy
             }
         }
         if (!$replacement) {
+            $replacement = $this->replaceUrl($match[2]);
+        }
+        $ret = $match[1] . $replacement . $match[3];
+        return $ret;
+    }
+
+    /**
+     * Proxify a URL 
+     * 
+     * @param mixed $toReplace 
+     * @access protected
+     * @return void
+     */
+    protected function replaceUrl($toReplace)
+    {
+        if ($this->isOptSet('r')) {
+            $reqUri = $this->getRequestUri();
+            $host = $this->getHost();
+            $rewriteDetails = $this->url->getRewriteDetails($reqUri, $host);
+            $replaceThese = array(
+                "http://$rewriteDetails[trueHostPathQuery]",
+                "https://$rewriteDetails[trueHostPathQuery]",
+            );
+            $replacement = str_replace(
+                $replaceThese,
+                $rewriteDetails['proxyProtocolHostPath'],
+                $toReplace
+            );
+        }
+        else {
             $toReplace = html_entity_decode($toReplace, ENT_QUOTES, 'utf-8');
             $proxyUrl = $this->getProxyUrl();
             $replacement = $proxyUrl . '&url=' . rawurlencode($toReplace);
             // since we are working with xml tags and attributes, we must perform escaping.
             $replacement = htmlspecialchars($replacement);
         }
-        $ret = $match[1] . $replacement . $match[3];
-        return $ret;
+        return $replacement;
+    }
+
+    /**
+     * Unproxify a URL
+     * 
+     * @access protected
+     * @return void
+     */
+    protected function reverseReplaceUrl($toReplace)
+    {
+        if ($this->isOptSet('r')) {
+            $reqUri = $this->getRequestUri();
+            $host = $this->getHost();
+            $rewriteDetails = $this->url->getRewriteDetails($reqUri, $host);
+            $replaceThese = array(
+                "http://$rewriteDetails[proxyHostPath]",
+                "https://$rewriteDetails[proxyHostPath]",
+            );
+            $rewrite = sprintf(
+                '%s://%s',
+                $rewriteDetails['trueScheme'],
+                $rewriteDetails['trueHostPathQuery']
+            );
+            $replacement = str_replace($replaceThese, $rewrite, $toReplace);
+        }
+        else {
+            $parsedUrl = parse_url($toReplace);
+            parse_str($parsedUrl['query'], $query);
+            if (isset($query['_url'])) {
+                $url = $query['_url'];
+            } elseif (isset($query['url'])) {
+                $url = $query['url'];
+            }
+            if ($url) {
+                $replacement = $url;
+            }
+        }
+        return $replacement;
+
     }
 }
