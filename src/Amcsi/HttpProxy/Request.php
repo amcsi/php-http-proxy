@@ -53,7 +53,7 @@ class Amcsi_HttpProxy_Request
      */
     public function doRequest()
     {
-        $client = new Amcsi_HttpProxy_HttpClient_FileGetContents;
+        $client = new Amcsi_HttpProxy_HttpClient_Curl;
         $client->setMethod($this->method);
         $client->setTimeout($this->timeout);
         $client->setContent($this->content);

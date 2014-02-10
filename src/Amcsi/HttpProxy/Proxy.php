@@ -203,7 +203,7 @@ class Amcsi_HttpProxy_Proxy
             var_dump($responseHeaders);
         }
         if (!empty($responseHeaders)) {
-            foreach ($responseHeaders as $hrh) {
+            foreach ($responseHeaders as $index => $hrh) {
                 if (0 === strpos($hrh, 'Set-Cookie:')) {
                     // filter so that the path would be right
                     $cookie = new Amcsi_HttpProxy_Cookie;
@@ -224,9 +224,9 @@ class Amcsi_HttpProxy_Proxy
                     $location = substr($hrh, 10);
                     $proxifiedLocation = $this->replaceUrl($location);
                     header("Location: $proxifiedLocation");
-                }
-                // I don't remember why I'm doing this, since I'm overwriting the Content-Length anyway
-                else if (0 !== strpos($hrh, 'Content-Length')) {
+                } elseif (0 === strpos($hrh, 'Transfer-Encoding: chunked')) {
+                    continue;
+                } else if (0 !== strpos($hrh, 'Content-Length')) {
                     header($hrh);
                 }
             }
