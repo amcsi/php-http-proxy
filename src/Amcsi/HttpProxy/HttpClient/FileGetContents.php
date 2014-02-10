@@ -28,6 +28,28 @@ class Amcsi_HttpProxy_HttpClient_FileGetContents implements Amcsi_HttpProxy_Http
             'follow_location' => 0,
             'ignore_errors' => true // so the contents of non-2xx responses would be taken as well
         );
+        $connectionCloseHeaderSent = false;
+        /**
+         * Make sure Connection: close is being sent, otherwise
+         * file_get_contents() will be really slow!
+         **/
+        foreach ($headers as $key => &$val) {
+            if (0 === strpos('Connection: ', $val)) {
+                if (false !== strpos('keep-alive')) {
+                    $val = "Connection: close";
+                    $connectionCloseHeaderSent = true;
+                    break;
+                } else {
+                    $connectionCloseHeaderSent = true;
+                }
+            }
+        }
+        unset($val);
+        if (!$connectionCloseHeaderSent) {
+            $headers[] = "Connection: close";
+            $connectionCloseHeaderSent = true;
+        }
+
         $http['header'] = join("\r\n", $headers);
         if ($this->timeout) {
             $http['timeout'] = $this->timeout;
