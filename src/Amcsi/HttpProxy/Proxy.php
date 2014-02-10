@@ -2,6 +2,7 @@
 class Amcsi_HttpProxy_Proxy
 {
     protected $expectedPasswordHash;
+    protected $config;
     protected $requirePassword = true;
     protected $forceSoapContentType;
     protected $proxyUrl;
@@ -44,6 +45,7 @@ class Amcsi_HttpProxy_Proxy
                 $this->$thisMember = $conf[$key];
             }
         }
+        $this->config = $conf;
         return $this;
     }
 
@@ -69,17 +71,6 @@ class Amcsi_HttpProxy_Proxy
         }
         $this->optChars = $optChars;
         return $this;
-    }
-
-    public function getRewriteDetails()
-    {
-        if (!$this->rewriteDetails) {
-            $url = $this->getGetPost('_url');
-            if (!$url) {
-                $url = $this->getGetPost('url');
-            }
-            $reqUri = getenv('REQUEST_URI');
-        }
     }
 
     public function getRequestUri()
@@ -126,6 +117,13 @@ class Amcsi_HttpProxy_Proxy
                 $url = $this->getGetPost('_url');
                 if (!$url) {
                     $url = $this->getGetPost('url');
+                }
+                if ($this->isOptSet('r')) {
+                    // pass the query params found in REQUEST_URI to the target url.
+                    $parts = explode('?', getenv('REQUEST_URI'), 2);
+                    if (isset($parts[1])) {
+                        $url .= '?' . $parts[1];
+                    }
                 }
                 $url = new Amcsi_HttpProxy_Url($url);
                 $this->url = $url;
@@ -191,11 +189,16 @@ class Amcsi_HttpProxy_Proxy
         $header = join("\r\n", $headers);
         $http['header'] = $header;
 
+
         $opts = array('http' => $http);
+        $this->debugLog('request url', (string) $url);
+        $this->debugLog('request options', $opts);
         $context = stream_context_create($opts);
 
         $response = @file_get_contents($url, false, $context);
         $responseHeaders = isset($http_response_header) ? $http_response_header : null;
+        $this->debugLog('response headers', $responseHeaders);
+        $this->debugLog('response content', (string) $response);
         $this->response($response, $responseHeaders);
     }
 
@@ -219,7 +222,12 @@ class Amcsi_HttpProxy_Proxy
                         $targetHost = getenv('SERVER_ADDR');
                     }
                     $cookie->setTargetHost($targetHost);
-                    header(sprintf('Set-Cookie: %s', $cookie->getFilteredSetCookie()));
+                    $cookie->setCookieHeaderValue(substr($hrh, 12));
+                    if ($this->isOptSet('r')) {
+                        $rewriteDetails = $this->getRewriteDetails();
+                        $cookie->setSourcePath($rewriteDetails['proxyPath']);
+                    }
+                    header(sprintf('Set-Cookie: %s', $cookie->getFilteredSetCookie()), false);
                     continue;
                 }
                 if (0 === strpos($hrh, 'Location:') && $this->isOptSet('u')) {
@@ -335,6 +343,14 @@ class Amcsi_HttpProxy_Proxy
         return $ret;
     }
 
+    public function getRewriteDetails()
+    {
+        $reqUri = $this->getRequestUri();
+        $host = $this->getHost();
+        $rewriteDetails = $this->url->getRewriteDetails($reqUri, $host);
+        return $rewriteDetails;
+    }
+
     /**
      * Proxify a URL 
      * 
@@ -405,5 +421,12 @@ class Amcsi_HttpProxy_Proxy
         }
         return $replacement;
 
+    }
+
+    public function debugLog($label, $value) {
+        if ($this->config['debugLogFile']) {
+            $text = sprintf("%s: %s\n", $label, print_r($value, true));
+            error_log($text, 3, $this->config['debugLogFile']);
+        }
     }
 }

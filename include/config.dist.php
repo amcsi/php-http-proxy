@@ -13,3 +13,6 @@ $conf['expectedPasswordHash'] = null;
 # require a password to be provided when making proxy requests, to not allow just
 # anyone to use this service.
 $conf['requirePassword'] = true;
+
+# Where debug logs should go. Off by default.
+$conf['debugLogFile'] = null;

@@ -45,8 +45,9 @@ class Amcsi_HttpProxy_Url
         $trueHostPathQuery = "$urlRemainingParts/";
         $trueHostPathQuery = preg_replace('@^https?://@', '', $trueHostPathQuery);
         $ret = array();
-        $ret['proxyProtocolHostPath']   = sprintf('http://%s%s/', $host, $reqUriRemainingParts);
+        $ret['proxyPath']               = "$reqUriRemainingParts/";
         $ret['proxyHostPath']           = sprintf('%s%s/', $host, $reqUriRemainingParts);
+        $ret['proxyProtocolHostPath']   = sprintf('http://%s%s/', $host, $reqUriRemainingParts);
         $ret['trueHostPathQuery']       = $trueHostPathQuery;
         $ret['trueScheme']              = $parsedUrl['scheme'];
         return $ret;
