@@ -75,7 +75,11 @@ class Amcsi_HttpProxy_Cookie
             } elseif (0 === strpos($part, 'domain')) {
                 // must rewrite the domain for it to work.
                 if ($this->targetHost) {
-                    $part = "domain=$this->targetHost";
+                    // domain only works if there is at least 1 dot in it.
+                    $domain = false !== strpos(substr($this->targetHost, 1), '.') ?
+                        $this->targetHost :
+                        '';
+                    $part = "domain=$domain";
                 }
             }
         }
