@@ -159,6 +159,9 @@ class Amcsi_HttpProxy_Proxy
                 $headers[] = sprintf('%s: %s', $key, $reqHeaders[$key]);
             }
         }
+        $request = new Amcsi_HttpProxy_Request;
+        $request->setUrl($url);
+
         $parsedUrl = parse_url($url);
         if (filter_var($parsedUrl['host'], FILTER_VALIDATE_IP)) {
             // host is IP
@@ -170,44 +173,31 @@ class Amcsi_HttpProxy_Proxy
             $xForwardedForPrefix = $reqHeaders['X-Forwarded-For'] . ', ';
         }
         $headers[] = sprintf("X-Forwarded-For: %s%s", $xForwardedForPrefix, getenv('REMOTE_ADDR'));
-        $http = array(
-            'method'  => getenv('REQUEST_METHOD'),
-            'follow_location' => 0,
-            'ignore_errors' => true // so the contents of non-2xx responses would be taken as well
-        );
+        $request->setMethod(getenv('REQUEST_METHOD'));
         if ($timeoutMs = $this->getGetPost('timeoutMs')) {
-            $http['timeout'] = $timeoutMs / 1000;
+            $request->setTimeoutMs($timeoutMs);
         }
-        if ($post) {
-            $http['content'] = $post;
-            $headers[] = 'Content-Length: ' . strlen($post);
-        } else {
-            if (isset($reqHeaders['Content-Length'])) {
-                $headers[] = 'Content-Length: ' . $reqHeaders['Content-Length'];
-            }
-        }
-        $header = join("\r\n", $headers);
-        $http['header'] = $header;
+        $request->setHeaders($headers);
+        $request->setContentAndLength($post);
 
-
-        $opts = array('http' => $http);
         $this->debugLog('request url', (string) $url);
-        $this->debugLog('request options', $opts);
-        $context = stream_context_create($opts);
+        $this->debugLog('request headers', $headers);
 
-        $response = @file_get_contents($url, false, $context);
-        $responseHeaders = isset($http_response_header) ? $http_response_header : null;
-        $this->debugLog('response headers', $responseHeaders);
-        $this->debugLog('response content', (string) $response);
-        $this->response($response, $responseHeaders);
+        $response = $request->doRequest();
+
+        $this->debugLog('response headers', $response->getHeaders());
+        $this->debugLog('response content', $response->getContent());
+        $this->response($response);
     }
 
-    public function response($response, $responseHeaders)
+    public function response(Amcsi_HttpProxy_Response $response)
     {
+        $content = $response->getContent();
+        $responseHeaders = $response->getHeaders();
         if ($this->isOptSet('u')) {
-            $response = $this->proxify($response);
+            $content = $this->proxify($content);
         }
-        if (false && !$response) {
+        if (false && !$content) {
             var_dump($reqHeaders);
             var_dump($opts);
             var_dump($responseHeaders);
@@ -240,8 +230,8 @@ class Amcsi_HttpProxy_Proxy
                     header($hrh);
                 }
             }
-            header(sprintf("Content-Length: %d", strlen($response)));
-            echo $response;
+            header(sprintf("Content-Length: %d", strlen($content)));
+            echo $content;
         }
         else {
             $lastError = error_get_last();
