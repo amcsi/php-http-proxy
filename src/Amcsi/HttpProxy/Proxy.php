@@ -5,6 +5,18 @@ class Amcsi_HttpProxy_Proxy
     protected $requirePassword = true;
     protected $forceSoapContentType;
     protected $proxyUrl;
+    /**
+     * Array of option characters set.
+     *
+     * p: POST should be taken into account when checking for REQUEST
+     *  variables. Also, POST should be used for proxified urls
+     * u: Rewrite all XML/HTML attributes to make all urls in them
+     *  proxified.
+     * 
+     * @var array
+     * @access protected
+     */
+    protected $optChars;
 
     public function setConf(array $conf)
     {
@@ -20,27 +32,56 @@ class Amcsi_HttpProxy_Proxy
         return $this;
     }
 
+    public function getGetPost($name)
+    {
+        if (!empty($this->optChars['p'])) {
+            return isset($_REQUEST[$name]) ? $_REQUEST[$name] : null;
+        }
+        return isset($_GET[$name]) ? $_GET[$name] : null;
+    }
+
+    public function isOptSet($optChar)
+    {
+        return !empty($this->optChars[$optChar]);
+    }
+
+    public function setOptsString($string)
+    {
+        $optChars = array();
+        $strlen = strlen($string);
+        for ($i = 0; $i < $strlen; $i++) {
+            $optChars[$string[$i]] = true;
+        }
+        $this->optChars = $optChars;
+        return $this;
+    }
+
     public function dispatch() {
-        $pass = isset($_REQUEST['pass']) ? $_REQUEST['pass'] : null;
+        $opts = isset($_REQUEST['opts']) ? $_REQUEST['opts'] : '';
+        $this->setOptsString($opts);
+        $pass = $this->getGetPost('pass');
         $requirePass = $this->requirePassword;
         if (
             !$requirePass ||
             crypt($pass, $this->expectedPasswordHash) === $this->expectedPasswordHash
         ) {
-            if (isset($_GET['sleep'])) {
-                sleep($_GET['sleep']);
+            if ($sleep = $this->getGetPost('sleep')) {
+                sleep($sleep);
             }
             $this->_pass = $pass;
             ini_set('display_errors', true);
-            if (!empty($_REQUEST['force_soap_content_type'])) {
+            if ($this->getGetPost('force_soap_content_type')) {
                 $this->forceSoapContentType = true;
             }
-            $action = isset($_REQUEST['action']) ? $_REQUEST['action'] : null;
+            $action = $this->getGetPost('action');
             switch ($action) {
             case 'auto_get_post':
             case 'auto_post':
             default:
-                $url = $_GET['url'];
+                $url = $this->getGetPost('_url');
+                if (!$url) {
+                    $url = $this->getGetPost('url');
+                }
                 $reqHeaders = apache_request_headers();
                 $post = file_get_contents('php://input');
                 $this->request($url, $reqHeaders, $post);;
@@ -56,9 +97,6 @@ class Amcsi_HttpProxy_Proxy
 
     public function request($url, $reqHeaders, $post)
     {
-        if (isset($_GET['sleep'])) {
-            sleep($_GET['sleep']);
-        }
         $headers = array ();
         foreach ($reqHeaders as $key => $val) {
             if ('Host' == $key) {
@@ -86,8 +124,8 @@ class Amcsi_HttpProxy_Proxy
             'method'  => getenv('REQUEST_METHOD'),
             'ignore_errors' => true // so the contents of non-2xx responses would be taken as well
         );
-        if (isset($_GET['timeoutMs'])) {
-            $http['timeout'] = $_GET['timeoutMs'] / 1000;
+        if ($timeoutMs = $this->getGetPost('timeoutMs')) {
+            $http['timeout'] = $timeoutMs / 1000;
         }
         if ($post) {
             $http['content'] = $post;
@@ -106,9 +144,8 @@ class Amcsi_HttpProxy_Proxy
 
     public function response($response, $responseHeaders)
     {
-        if (!empty($_REQUEST['proxify_urls'])) {
-            $proxifyUrls = $_REQUEST['proxify_urls'];
-            $response = $this->proxify($response, $proxifyUrls);
+        if ($this->isOptSet('u')) {
+            $response = $this->proxify($response);
         }
         if (false && !$response) {
             var_dump($reqHeaders);
@@ -174,8 +211,7 @@ class Amcsi_HttpProxy_Proxy
             $path = $split[0];
             $get = array ();
             $get['pass'] = $this->_pass;
-            $get['action'] = 'auto_get_post';
-            $get['proxify_urls'] = $_REQUEST['proxify_urls'];
+            $get['opts'] = $this->getGetPost('opts');
             if ($this->forceSoapContentType) {
                 $get['force_soap_content_type'] = 1;
             }
