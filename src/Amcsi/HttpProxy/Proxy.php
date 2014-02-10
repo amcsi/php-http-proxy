@@ -30,6 +30,9 @@ class Amcsi_HttpProxy_Proxy
     protected $requestUri;
     protected $host;
 
+    protected $reqHeaders;
+    protected $post;
+
     public function setConf(array $conf)
     {
         $map = array(
@@ -128,7 +131,9 @@ class Amcsi_HttpProxy_Proxy
                 $this->url = $url;
                 $reqHeaders = apache_request_headers();
                 $post = file_get_contents('php://input');
-                $this->request($url, $reqHeaders, $post);;
+                $this->reqHeaders = $reqHeaders;
+                $this->post = $post;
+                $this->request($url);
                 exit;
             }
         }
@@ -139,8 +144,10 @@ class Amcsi_HttpProxy_Proxy
         }
     }
 
-    public function request($url, $reqHeaders, $post)
+    public function request($url)
     {
+        $reqHeaders = $this->reqHeaders;
+        $post = $this->post;
         $headers = array ();
         foreach ($reqHeaders as $key => $val) {
             if ('Host' == $key || 'Content-Length' == $key) {
@@ -167,6 +174,7 @@ class Amcsi_HttpProxy_Proxy
         $headers[] = sprintf("X-Forwarded-For: %s%s", $xForwardedForPrefix, getenv('REMOTE_ADDR'));
         $http = array(
             'method'  => getenv('REQUEST_METHOD'),
+            'follow_location' => 0,
             'ignore_errors' => true // so the contents of non-2xx responses would be taken as well
         );
         if ($timeoutMs = $this->getGetPost('timeoutMs')) {
@@ -216,8 +224,8 @@ class Amcsi_HttpProxy_Proxy
                 }
                 if (0 === strpos($hrh, 'Location:') && $this->isOptSet('u')) {
                     $location = substr($hrh, 10);
-                    $location = $this->replaceUrl($location);
-                    header("Location: $hrh");
+                    $proxifiedLocation = $this->replaceUrl($location);
+                    header("Location: $proxifiedLocation");
                 }
                 // I don't remember why I'm doing this, since I'm overwriting the Content-Length anyway
                 else if (0 !== strpos($hrh, 'Content-Length')) {
