@@ -53,7 +53,15 @@ class Amcsi_HttpProxy_Request
      */
     public function doRequest()
     {
-        $client = new Amcsi_HttpProxy_HttpClient_Curl;
+        static $curlExists;
+        if (!isset($curlExists)) {
+            $curlExists = function_exists('curl_version');
+        }
+        if ($curlExists) {
+            $client = new Amcsi_HttpProxy_HttpClient_Curl;
+        } else {
+            $client = new Amcsi_HttpProxy_HttpClient_FileGetContents;
+        }
         $client->setMethod($this->method);
         $client->setTimeout($this->timeout);
         $client->setContent($this->content);
