@@ -1,5 +1,5 @@
 <?php
-$basePath = realpath(dirname(__FILE__) . '/..');
+$basePath = dirname(__FILE__);
 require_once "$basePath/vendor/autoload.php";
 
 ini_set('display_errors', true);
