@@ -14,12 +14,15 @@ class Amcsi_HttpProxy_Url
      * out what parts of urls on the page to be rewritten to
      * what when using RewriteRule style proxying
      * 
-     * @param mixed $reqUri 
+     * @param Amcsi_HttpProxy_Env $env 
      * @access public
      * @return array
      */
-    public function getRewriteDetails($reqUri, $host)
+    public function getRewriteDetails(Amcsi_HttpProxy_Env $env)
     {
+        $reqUri = $env->getRequestUri();
+        $host = $env->getHostOrIp();
+
         $strpos = strpos($this->url, $reqUri);
         $parsedReqUri = parse_url($reqUri);
         $parsedUrl = parse_url($this->url);
