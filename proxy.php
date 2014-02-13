@@ -18,7 +18,8 @@ if (file_exists($configFile)) {
     return false;
 }
 
-$proxy = new Amcsi_HttpProxy_Proxy;
+$env = new Amcsi_HttpProxy_Env_Current;
+$proxy = new Amcsi_HttpProxy_Proxy($env);
 
 $proxy->setConf($conf);
 
