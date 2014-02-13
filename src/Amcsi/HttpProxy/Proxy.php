@@ -1,6 +1,14 @@
 <?php
 class Amcsi_HttpProxy_Proxy
 {
+    /**
+     * Contains the environment information to use
+     * 
+     * @var Amcsi_HttpProxy_Env
+     * @access protected
+     */
+    protected $env;
+
     protected $expectedPasswordHash;
     protected $config;
     protected $requirePassword = true;
@@ -34,6 +42,11 @@ class Amcsi_HttpProxy_Proxy
     protected $reqHeaders;
     protected $post;
 
+    public function __construct(Amcsi_HttpProxy_Env $env)
+    {
+        $this->env = $env;
+    }
+
     public function setConf(array $conf)
     {
         $map = array(
@@ -51,10 +64,7 @@ class Amcsi_HttpProxy_Proxy
 
     public function getGetPost($name)
     {
-        if (!empty($this->optChars['p'])) {
-            return isset($_REQUEST[$name]) ? $_REQUEST[$name] : null;
-        }
-        return isset($_GET[$name]) ? $_GET[$name] : null;
+        return $this->env->getParam($name);
     }
 
     public function isOptSet($optChar)
@@ -79,17 +89,6 @@ class Amcsi_HttpProxy_Proxy
             $this->requestUri = getenv('REQUEST_URI');
         }
         return $this->requestUri;
-    }
-
-    public function getHost()
-    {
-        if (!$this->host) {
-            $this->host = getenv('HTTP_HOST');
-            if (!$this->host) {
-                $this->host = getenv('SERVER_ADDR');
-            }
-        }
-        return $this->host;
     }
 
     public function dispatch() {
@@ -335,9 +334,7 @@ class Amcsi_HttpProxy_Proxy
 
     public function getRewriteDetails()
     {
-        $reqUri = $this->getRequestUri();
-        $host = $this->getHost();
-        $rewriteDetails = $this->url->getRewriteDetails($reqUri, $host);
+        $rewriteDetails = $this->url->getRewriteDetails($this->env);
         return $rewriteDetails;
     }
 
@@ -352,7 +349,7 @@ class Amcsi_HttpProxy_Proxy
     {
         if ($this->isOptSet('r')) {
             $reqUri = $this->getRequestUri();
-            $host = $this->getHost();
+            $host = $this->env->getHostOrIp();
             $rewriteDetails = $this->url->getRewriteDetails($reqUri, $host);
             $replaceThese = array(
                 "http://$rewriteDetails[trueHostPathQuery]",
@@ -384,7 +381,7 @@ class Amcsi_HttpProxy_Proxy
     {
         if ($this->isOptSet('r')) {
             $reqUri = $this->getRequestUri();
-            $host = $this->getHost();
+            $host = $this->env->getHostOrIp();
             $rewriteDetails = $this->url->getRewriteDetails($reqUri, $host);
             $replaceThese = array(
                 "http://$rewriteDetails[proxyHostPath]",
