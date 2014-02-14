@@ -83,7 +83,7 @@ class Amcsi_HttpProxy_Env
                 $url .= '?' . $parts[1];
             }
         }
-        $url = new Amcsi_HttpProxy_Url($url);
+        $url = new Amcsi_HttpProxy_Url($url, $apacheRewriteStyle);
         return $url;
     }
 
