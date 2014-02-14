@@ -6,7 +6,7 @@ class UrlTest extends PHPUnit_Framework_TestCase
 
     public function setUp()
     {
-        $url = new Amcsi_HttpProxy_Url('http://target-url.com/d/e/x/y/z.php');
+        $url = new Amcsi_HttpProxy_Url('http://target-url.com/d/e/x/y/z.php', false);
         $this->url = $url;
     }
 
@@ -33,7 +33,8 @@ class UrlTest extends PHPUnit_Framework_TestCase
     public function testGetRewriteDetailsWithQuery()
     {
         $this->url = $url = new Amcsi_HttpProxy_Url(
-            'http://target-url.com/d/e/x/y/z.php?foo=bar'
+            'http://target-url.com/d/e/x/y/z.php?foo=bar',
+            false
         );
         $reqUri = '/a/b/c/x/y/z.php?foo=bar';
         $host = 'source-url.com';

@@ -2,10 +2,12 @@
 class Amcsi_HttpProxy_Url
 {
     protected $url;
+    protected $isApacheRewriteStyle;
 
-    public function __construct($urlString)
+    public function __construct($urlString, $isApacheRewriteStyle)
     {
         $this->url = $urlString;
+        $this->isApacheRewriteStyle = $isApacheRewriteStyle;
     }
 
     /**
@@ -69,5 +71,10 @@ class Amcsi_HttpProxy_Url
     public function __toString()
     {
         return (string) $this->url;
+    }
+
+    public function isApacheRewriteStyle()
+    {
+        return $this->isApacheRewriteStyle;
     }
 }
