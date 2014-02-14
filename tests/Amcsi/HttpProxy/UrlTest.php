@@ -19,7 +19,7 @@ class UrlTest extends PHPUnit_Framework_TestCase
     {
         $reqUri = '/a/b/c/x/y/z.php';
         $host = 'source-url.com';
-        $result = $this->url->getRewriteDetails($reqUri, $host);
+        $result = $this->url->getRewriteDetailsByReqUriAndHost($reqUri, $host);
         $expected = array(
             'proxyPath' => '/a/b/c/',
             'proxyHostPath' => 'source-url.com/a/b/c/',
@@ -37,7 +37,7 @@ class UrlTest extends PHPUnit_Framework_TestCase
         );
         $reqUri = '/a/b/c/x/y/z.php?foo=bar';
         $host = 'source-url.com';
-        $result = $this->url->getRewriteDetails($reqUri, $host);
+        $result = $this->url->getRewriteDetailsByReqUriAndHost($reqUri, $host);
         $expected = array(
             'proxyPath' => '/a/b/c/',
             'proxyHostPath' => 'source-url.com/a/b/c/',

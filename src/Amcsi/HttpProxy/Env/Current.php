@@ -8,7 +8,8 @@ class Amcsi_HttpProxy_Env_Current extends Amcsi_HttpProxy_Env
             $_GET,
             $_POST,
             file_get_contents('php://input'),
-            $_SERVER
+            $_SERVER,
+            apache_request_headers()
         );
     }
 }
