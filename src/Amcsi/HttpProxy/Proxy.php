@@ -86,21 +86,21 @@ class Amcsi_HttpProxy_Proxy
     public function getRequestUri()
     {
         if (!$this->requestUri) {
-            $this->requestUri = getenv('REQUEST_URI');
+            $this->requestUri = $this->env->getEnv('REQUEST_URI');
         }
         return $this->requestUri;
     }
 
     public function dispatch() {
-        $opts = isset($_REQUEST['opts']) ? $_REQUEST['opts'] : '';
+        $opts = $this->env->getParam('opts');
         $this->setOptsString($opts);
-        $pass = $this->getGetPost('pass');
+        $pass = $this->env->getParam('pass');
         $requirePass = $this->requirePassword;
         if (
             !$requirePass ||
             crypt($pass, $this->expectedPasswordHash) === $this->expectedPasswordHash
         ) {
-            if ($sleep = $this->getGetPost('sleep')) {
+            if ($sleep = $this->env->getParam('sleep')) {
                 sleep($sleep);
             }
             $this->_pass = $pass;
@@ -108,31 +108,11 @@ class Amcsi_HttpProxy_Proxy
             if ($this->getGetPost('force_soap_content_type')) {
                 $this->forceSoapContentType = true;
             }
-            $action = $this->getGetPost('action');
-            switch ($action) {
-            case 'auto_get_post':
-            case 'auto_post':
-            default:
-                $url = $this->getGetPost('_url');
-                if (!$url) {
-                    $url = $this->getGetPost('url');
-                }
-                if ($this->isOptSet('r')) {
-                    // pass the query params found in REQUEST_URI to the target url.
-                    $parts = explode('?', getenv('REQUEST_URI'), 2);
-                    if (isset($parts[1])) {
-                        $url .= '?' . $parts[1];
-                    }
-                }
-                $url = new Amcsi_HttpProxy_Url($url);
-                $this->url = $url;
-                $reqHeaders = apache_request_headers();
-                $post = file_get_contents('php://input');
-                $this->reqHeaders = $reqHeaders;
-                $this->post = $post;
-                $this->request($url);
-                exit;
-            }
+            $apacheStyleRewriting = $this->isOptSet('r');
+            $url = $this->env->getUrlObj($apacheStyleRewriting);
+            $this->url = $url;
+            $this->request($url);
+            exit;
         }
         else {
             echo 'Forbidden';
@@ -143,8 +123,7 @@ class Amcsi_HttpProxy_Proxy
 
     public function request($url)
     {
-        $reqHeaders = $this->reqHeaders;
-        $post = $this->post;
+        $reqHeaders = $this->env->getRequestHeaders();
         $headers = array ();
         foreach ($reqHeaders as $key => $val) {
             if ('Host' == $key || 'Content-Length' == $key) {
@@ -171,13 +150,13 @@ class Amcsi_HttpProxy_Proxy
         if (!empty($reqHeaders['X-Forwarded-For'])) {
             $xForwardedForPrefix = $reqHeaders['X-Forwarded-For'] . ', ';
         }
-        $headers[] = sprintf("X-Forwarded-For: %s%s", $xForwardedForPrefix, getenv('REMOTE_ADDR'));
-        $request->setMethod(getenv('REQUEST_METHOD'));
+        $headers[] = sprintf("X-Forwarded-For: %s%s", $xForwardedForPrefix, $this->env->getEnv('REMOTE_ADDR'));
+        $request->setMethod($this->env->getenv('REQUEST_METHOD'));
         if ($timeoutMs = $this->getGetPost('timeoutMs')) {
             $request->setTimeoutMs($timeoutMs);
         }
         $request->setHeaders($headers);
-        $request->setContentAndLength($post);
+        $request->setContentAndLength($this->env->getInput());
 
         $this->debugLog('request url', (string) $url);
         $this->debugLog('request headers', $headers);
@@ -206,9 +185,9 @@ class Amcsi_HttpProxy_Proxy
                 if (0 === strpos($hrh, 'Set-Cookie:')) {
                     // filter so that the path would be right
                     $cookie = new Amcsi_HttpProxy_Cookie;
-                    $targetHost = getenv('HTTP_HOST');
+                    $targetHost = $this->env->getEnv('HTTP_HOST');
                     if (!$targetHost) {
-                        $targetHost = getenv('SERVER_ADDR');
+                        $targetHost = $this->env->getEnv('SERVER_ADDR');
                     }
                     $cookie->setTargetHost($targetHost);
                     $cookie->setCookieHeaderValue(substr($hrh, 12));
@@ -255,19 +234,14 @@ class Amcsi_HttpProxy_Proxy
      */
     public function getProxyUrl() {
         if (!$this->proxyUrl) {
-            $schema = 'on' == getenv('HTTPS') || 'true' == getenv('HTTP_SSL_CONNECTION') ?
-                'https://' :
-                'http://';
-            $host = getenv('HTTP_HOST');
-            if (!$host) {
-                $host = getenv('SERVER_ADDR');
-            }
-            $pathWithGet = getenv('REQUEST_URI');
+            $schema = $this->env->isHttps() ?  'https://' : 'http://';
+            $host = $this->env->getHostOrIp();
+            $pathWithGet = $this->env->getEnv('REQUEST_URI');
             $split = explode('?', $pathWithGet);
             $path = $split[0];
             $get = array ();
             $get['pass'] = $this->_pass;
-            $get['opts'] = $this->getGetPost('opts');
+            $get['opts'] = $this->env->getParam('opts');
             if ($this->forceSoapContentType) {
                 $get['force_soap_content_type'] = 1;
             }
