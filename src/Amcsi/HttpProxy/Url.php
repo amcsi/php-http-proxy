@@ -22,7 +22,11 @@ class Amcsi_HttpProxy_Url
     {
         $reqUri = $env->getRequestUri();
         $host = $env->getHostOrIp();
+        return $this->getRewriteDetailsByReqUriAndHost($reqUri, $host);
+    }
 
+    public function getRewriteDetailsByReqUriAndHost($reqUri, $host)
+    {
         $strpos = strpos($this->url, $reqUri);
         $parsedReqUri = parse_url($reqUri);
         $parsedUrl = parse_url($this->url);
