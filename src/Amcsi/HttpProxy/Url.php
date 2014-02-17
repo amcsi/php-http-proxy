@@ -2,12 +2,42 @@
 class Amcsi_HttpProxy_Url
 {
     protected $url;
-    protected $isApacheRewriteStyle;
+    protected $fakeGet;
 
-    public function __construct($urlString, $isApacheRewriteStyle)
+    protected $optChars;
+
+    /**
+     * __construct 
+     * 
+     * @param string $urlString  URL string (target true url)
+     * @param array $fakeGet     Fake GET params
+     * @access public
+     * @return void
+     */
+    public function __construct($urlString, array $fakeGet)
     {
         $this->url = $urlString;
-        $this->isApacheRewriteStyle = $isApacheRewriteStyle;
+        $this->fakeGet = $fakeGet;
+    }
+
+    public function isOptSet($optChar)
+    {
+        $optChars = $this->getOptChars();
+        return !empty($optChars[$optChar]);
+    }
+
+    public function getOptChars()
+    {
+        if (!$this->optChars) {
+            $optChars = array();
+            $string = isset($fakeGet['opts']) ? $fakeGet['opts'] : '';
+            $strlen = strlen($string);
+            for ($i = 0; $i < $strlen; $i++) {
+                $optChars[$string[$i]] = true;
+            }
+            $this->optChars = $optChars;
+        }
+        return $this->optChars;
     }
 
     /**
@@ -62,6 +92,11 @@ class Amcsi_HttpProxy_Url
         return $ret;
     }
 
+    public function getParam($name)
+    {
+        return isset($this->fakeGet[$name]) ? $this->fakeGet[$name] : null;
+    }
+
     public function getHost()
     {
         $parsedUrl = parse_url($this->url);
@@ -76,5 +111,13 @@ class Amcsi_HttpProxy_Url
     public function isApacheRewriteStyle()
     {
         return $this->isApacheRewriteStyle;
+    }
+
+    public function getRequestUri()
+    {
+        if (!$this->requestUri) {
+            $this->requestUri = $this->getEnv('REQUEST_URI');
+        }
+        return $this->requestUri;
     }
 }
