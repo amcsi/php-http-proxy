@@ -8,6 +8,7 @@ class Amcsi_HttpProxy_Env
     protected $url;
     protected $requestUri;
     protected $hostOrIp;
+    protected $pathInfo;
 
     public function __construct(
         $input,
@@ -17,6 +18,21 @@ class Amcsi_HttpProxy_Env
         $this->input = $input;
         $this->server = $server;
         $this->requestHeaders = $requestHeaders;
+
+
+    }
+
+    public function getPathInfo()
+    {
+        if (!$this->pathInfo) {
+            $pathInfo = $this->getEnv('PATH_INFO');
+            if (false !== strpos($pathInfo, '?')) {
+                $msg = "PATH_INFO cannot have a (?) mark in it. Currently it is: $pathInfo";
+                throw new LogicException($msg);
+            }
+            $this->pathInfo = $pathInfo;
+        }
+        return $this->pathInfo;
     }
 
     /**
@@ -28,7 +44,7 @@ class Amcsi_HttpProxy_Env
     public function getUrlObj()
     {
         if (!$this->url) {
-            $pathinfo = $this->getEnv('PATH_INFO');
+            $pathinfo = $this->getPathInfo();
             if (!$pathinfo) {
                 /**
                  * PATH_INFO should be existing, so this bit of fallback
@@ -67,6 +83,51 @@ class Amcsi_HttpProxy_Env
             $this->url = $url;
         }
         return $this->url;
+    }
+
+    public function isApacheRewriteStyle()
+    {
+        return !!$this->getEnv('REDIRECT_URL');
+    }
+
+    /**
+     * Should be used only for non-apache-rewrite-style.
+     * 
+     * @access public
+     * @return void
+     */
+    public function getBaseUrl()
+    {
+        $scheme = $this->getScheme();
+        
+        $scriptName = $this->getScriptName();
+
+        $sourceBaseUrl = sprintf(
+            "%s://%s%s",
+            $scheme,
+            $this->getHostOrIp(),
+            $scriptName
+        );
+        return $sourceBaseUrl;
+    }
+
+    /**
+     * Should be used only for non-apache-rewrite-style.
+     * 
+     * @access public
+     * @return void
+     */
+    public function getScriptName()
+    {
+        $reqUri = $this->getRequestUri();
+        list($reqUriWithoutQuery) = explode('?', $reqUri, 2);
+        $pathInfo = $this->getPathInfo();
+        $useReqUri = $reqUriWithoutQuery;
+
+        // subtract the pathinfo part from the request uri (without query)
+        // to get the script name.
+        $scriptName = str_replace($pathInfo, '', $useReqUri);
+        return $scriptName;
     }
 
     public function getRequestUri()
@@ -119,4 +180,10 @@ class Amcsi_HttpProxy_Env
         return 'on' == $this->getEnv('HTTPS') ||
             'true' == $this->getEnv('HTTP_SSL_CONNECTION');
     }
+
+    public function getScheme()
+    {
+        return $this->isHttps() ? 'https' : 'http';
+    }
+
 }

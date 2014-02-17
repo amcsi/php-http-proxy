@@ -17,6 +17,55 @@ class Amcsi_HttpProxy_Rewriter
         $this->url = $url;
     }
 
+    public function getParam($name)
+    {
+        return $this->url->getParam($name);
+    }
+
+    public function getRewriteDetails()
+    {
+        $reqUri = $this->env->getRequestUri();
+        $host = $this->env->getHostOrIp();
+
+        $strpos = strpos($this->url, $reqUri);
+        $parsedReqUri = parse_url($reqUri);
+        $parsedUrl = parse_url($this->url);
+
+        $mutualPartsReversed = array();
+
+        $urlQuerySeparated = explode('?', $this->url);
+        $urlWithoutQuery = $urlQuerySeparated[0];
+        $urlParts = explode('/', $urlWithoutQuery);
+        $reqUriQuerySeparated = explode('?', $reqUri);
+        $reqUriWithoutQuery = $reqUriQuerySeparated[0];
+        $reqUriParts = explode('/', $reqUriWithoutQuery);
+
+        while ($urlParts && $reqUriParts) {
+            $part = array_pop($urlParts);
+            if ($part === end($reqUriParts)) {
+                $mutualPartsReversed[] = array_pop($reqUriParts);
+            } else {
+                /**
+                 * Put the popped parts back
+                 **/
+                $urlParts[] = $part;
+                break;
+            }
+        }
+        $urlRemainingParts = join('/', $urlParts);
+        $reqUriRemainingParts = join('/', $reqUriParts);
+        $targetHost = $this->env->getHostOrIp();
+        $trueHostPathQuery = "$urlRemainingParts/";
+        $trueHostPathQuery = preg_replace('@^https?://@', '', $trueHostPathQuery);
+        $ret = array();
+        $ret['proxyPath']               = "$reqUriRemainingParts/";
+        $ret['proxyHostPath']           = sprintf('%s%s/', $host, $reqUriRemainingParts);
+        $ret['proxyProtocolHostPath']   = sprintf('http://%s%s/', $host, $reqUriRemainingParts);
+        $ret['trueHostPathQuery']       = $trueHostPathQuery;
+        $ret['trueScheme']              = $parsedUrl['scheme'];
+        return $ret;
+    }
+
     /**
      * Returns the base url needed for proxifying urls.
      * 
@@ -104,12 +153,14 @@ class Amcsi_HttpProxy_Rewriter
      * @access protected
      * @return void
      */
-    protected function replaceUrl($toReplace)
+    public function replaceUrl($toReplace)
     {
+        $parsedUrl = parse_url($toReplace);
+
         if ($this->isApacheRewriteStyle()) {
-            $reqUri = $this->getRequestUri();
-            $host = $this->env->getHostOrIp();
-            $rewriteDetails = $this->url->getRewriteDetails($reqUri, $host);
+            $rewriteDetails = $this->getRewriteDetails();
+
+
             $replaceThese = array(
                 "http://$rewriteDetails[trueHostPathQuery]",
                 "https://$rewriteDetails[trueHostPathQuery]",
@@ -119,14 +170,21 @@ class Amcsi_HttpProxy_Rewriter
                 $rewriteDetails['proxyProtocolHostPath'],
                 $toReplace
             );
+
+        } else {
+            $newUrl = $this->url->newMerged($toReplace, array());
+            $scheme = $this->env->getScheme();
+
+            # http://proxy-url.com/a/b/c/proxy.php
+            $sourceBaseUrl = $this->env->getBaseUrl();
+
+            # /opts=u&scheme=http/target-url.com/d/e/lol?foo=bar
+            $assembledUrlPart = $newUrl->assembleUrlStringWithFakeGet();
+            $rewriteDetails = $this->getRewriteDetails();
+
+            $replacement = rtrim($sourceBaseUrl, '/') . $assembledUrlPart;
         }
-        else {
-            $toReplace = html_entity_decode($toReplace, ENT_QUOTES, 'utf-8');
-            $proxyUrl = $this->getProxyUrl();
-            $replacement = $proxyUrl . '&url=' . rawurlencode($toReplace);
-            // since we are working with xml tags and attributes, we must perform escaping.
-            $replacement = htmlspecialchars($replacement);
-        }
+
         return $replacement;
     }
 
@@ -194,14 +252,8 @@ class Amcsi_HttpProxy_Rewriter
         return $ret;
     }
 
-    public function getRewriteDetails()
-    {
-        $rewriteDetails = $this->url->getRewriteDetails($this->env);
-        return $rewriteDetails;
-    }
-
     public function isApacheRewriteStyle()
     {
-        return $this->url->isApacheRewriteStyle();
+        return $this->env->isApacheRewriteStyle();
     }
 }
