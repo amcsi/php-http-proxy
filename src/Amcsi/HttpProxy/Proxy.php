@@ -8,6 +8,7 @@ class Amcsi_HttpProxy_Proxy
      * @access protected
      */
     protected $env;
+    protected $get;
 
     protected $expectedPasswordHash;
     protected $config;
@@ -27,7 +28,9 @@ class Amcsi_HttpProxy_Proxy
     protected $optChars;
     protected $rewriteDetails;
     /**
-     * url 
+     * Url object.
+     * Has information on the target url, and has
+     * get-style options. 
      * 
      * @var Amcsi_HttpProxy_Url
      * @access protected
@@ -43,6 +46,8 @@ class Amcsi_HttpProxy_Proxy
     public function __construct(Amcsi_HttpProxy_Env $env)
     {
         $this->env = $env;
+        $urlObj = $env->getUrlObj();
+        $this->url = $urlObj;
     }
 
     public function setConf(array $conf)
@@ -60,14 +65,20 @@ class Amcsi_HttpProxy_Proxy
         return $this;
     }
 
-    public function getGetPost($name)
+    /**
+     * getUrlObj 
+     * 
+     * @access public
+     * @return Amcsi_HttpProxy_Url
+     */
+    public function getUrlObj()
     {
-        return $this->env->getParam($name);
+        return $this->url;
     }
 
     public function isOptSet($optChar)
     {
-        return !empty($this->optChars[$optChar]);
+        return $this->url->isOptSet($optChar);
     }
 
     public function setOptsString($string)
@@ -81,32 +92,36 @@ class Amcsi_HttpProxy_Proxy
         return $this;
     }
 
-    public function getRequestUri()
+    /**
+     * It is the URL object whose params should be taken into
+     * account.
+     * 
+     * @param mixed $name 
+     * @access public
+     * @return void
+     */
+    public function getParam($name)
     {
-        if (!$this->requestUri) {
-            $this->requestUri = $this->env->getEnv('REQUEST_URI');
-        }
-        return $this->requestUri;
+        return $this->url->getParam($name);
     }
 
     public function dispatch() {
-        $opts = $this->env->getParam('opts');
+        $opts = $this->getParam('opts');
         $this->setOptsString($opts);
-        $pass = $this->env->getParam('pass');
+        $pass = $this->getParam('pass');
         $requirePass = $this->requirePassword;
         if (
             !$requirePass ||
             crypt($pass, $this->expectedPasswordHash) === $this->expectedPasswordHash
         ) {
-            if ($sleep = $this->env->getParam('sleep')) {
+            if ($sleep = $this->getParam('sleep')) {
                 sleep($sleep);
             }
             $this->_pass = $pass;
             ini_set('display_errors', true);
-            $apacheStyleRewriting = $this->isOptSet('r');
-            $url = $this->env->getUrlObj($apacheStyleRewriting);
+            $url = $this->getUrlObj();
             $this->url = $url;
-            $rewriter = new Amcsi_HttpProxy_Rewriter($url, $this->env);
+            $rewriter = new Amcsi_HttpProxy_Rewriter($this->env, $url);
             $this->rewriter = $rewriter;
             $this->request($url);
             exit;
@@ -149,7 +164,7 @@ class Amcsi_HttpProxy_Proxy
         }
         $headers[] = sprintf("X-Forwarded-For: %s%s", $xForwardedForPrefix, $this->env->getEnv('REMOTE_ADDR'));
         $request->setMethod($this->env->getenv('REQUEST_METHOD'));
-        if ($timeoutMs = $this->getGetPost('timeoutMs')) {
+        if ($timeoutMs = $this->getParam('timeoutMs')) {
             $request->setTimeoutMs($timeoutMs);
         }
         $request->setHeaders($headers);
