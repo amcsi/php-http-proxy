@@ -30,7 +30,7 @@ class Amcsi_HttpProxy_Url
     {
         if (!$this->optChars) {
             $optChars = array();
-            $string = isset($fakeGet['opts']) ? $fakeGet['opts'] : '';
+            $string = isset($this->fakeGet['opts']) ? $this->fakeGet['opts'] : '';
             $strlen = strlen($string);
             for ($i = 0; $i < $strlen; $i++) {
                 $optChars[$string[$i]] = true;
@@ -52,6 +52,10 @@ class Amcsi_HttpProxy_Url
      */
     public function getRewriteDetails(Amcsi_HttpProxy_Env $env)
     {
+        trigger_error(
+            "This method is now the responsibility of Rewriter",
+            E_USER_DEPRECATED
+        );
         $reqUri = $env->getRequestUri();
         $host = $env->getHostOrIp();
         return $this->getRewriteDetailsByReqUriAndHost($reqUri, $host);
@@ -59,6 +63,10 @@ class Amcsi_HttpProxy_Url
 
     public function getRewriteDetailsByReqUriAndHost($reqUri, $host)
     {
+        trigger_error(
+            "This method is now the responsibility of Rewriter",
+            E_USER_DEPRECATED
+        );
         $strpos = strpos($this->url, $reqUri);
         $parsedReqUri = parse_url($reqUri);
         $parsedUrl = parse_url($this->url);
