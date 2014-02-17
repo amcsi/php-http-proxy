@@ -108,16 +108,52 @@ class Amcsi_HttpProxy_Url
         return (string) $this->url;
     }
 
-    public function isApacheRewriteStyle()
-    {
-        return $this->isApacheRewriteStyle;
-    }
-
     public function getRequestUri()
     {
         if (!$this->requestUri) {
             $this->requestUri = $this->getEnv('REQUEST_URI');
         }
         return $this->requestUri;
+    }
+
+    /**
+     * Creates a new url object based on this one.
+     * Merges a passed fakeGet with the contents of the ones here.
+     * 
+     * @param mixed $urlString 
+     * @param array $fakeGetToMerge 
+     * @access public
+     * @return void
+     */
+    public function newMerged($urlString, array $fakeGetToMerge)
+    {
+        $fakeGet = array_merge($this->fakeGet, $fakeGetToMerge);
+        return new self($urlString, $fakeGet);
+    }
+
+    /**
+     * assembleUrlStringWithFakeGet 
+     *
+     * e.g.
+     *  url: http://target-url.com/d/e/lol.php?hey
+     *  fake get: [
+     *      'opts' => 'u'
+     *  ]
+     *
+     *  becomes:
+     *  /opts=u&scheme=http/target-url.com/d/e/lol.php?hey
+     * 
+     * @access public
+     * @return void
+     */
+    public function assembleUrlStringWithFakeGet()
+    {
+        $fakeGet = $this->fakeGet;
+        $parsedUrl = parse_url($this->url);
+        $fakeGet['scheme'] = isset($parsedUrl['scheme']) ? $parsedUrl['scheme'] : 'http';
+        $urlWithoutProtocol = preg_replace('@^.*://@', '', $this->url);
+        $fakeGetString = http_build_query($fakeGet);
+        $ret = sprintf("/%s/%s", $fakeGetString, $urlWithoutProtocol);
+        return $ret;
     }
 }
