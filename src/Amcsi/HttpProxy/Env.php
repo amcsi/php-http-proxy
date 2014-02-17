@@ -1,8 +1,6 @@
 <?php
 class Amcsi_HttpProxy_Env
 {
-    protected $get;
-    protected $post;
     protected $input;
     protected $server;
     protected $requestHeaders;
@@ -12,22 +10,63 @@ class Amcsi_HttpProxy_Env
     protected $hostOrIp;
 
     public function __construct(
-        array $get,
-        array $post,
         $input,
         array $server,
         array $requestHeaders
     ) {
-        $this->get = $get;
-        $this->post = $post;
         $this->input = $input;
         $this->server = $server;
         $this->requestHeaders = $requestHeaders;
     }
 
-    public function getParam($name)
+    /**
+     * getUrlObjAndFakeGet 
+     * 
+     * @access public
+     * @return array
+     */
+    public function getUrlObj()
     {
-        return isset($this->get[$name]) ? $this->get[$name] : null;
+        if (!$this->url) {
+            $pathinfo = $this->getEnv('PATH_INFO');
+            if (!$pathinfo) {
+                /**
+                 * PATH_INFO should be existing, so this bit of fallback
+                 * code should probably actually be deleted.
+                 **/
+
+                if (strpos(
+                    $reqUri = $this->getRequestUri(),
+                    $scriptName = $this->getEnv('SCRIPT_NAME'))
+                ) {
+                    $strlen = strlen($scriptName);
+                    $pathInfo = substr($reqUri, $strlen);
+                } else if ($redUrl = $this->getEnv('REDIRECT_URL')) {
+                    // 
+                }
+            }
+
+            /**
+             * so /path/to/proxy.php/fakeGetParam=fakeGetVal&scheme=http/true-url.com/d/e/index.php?lol
+             * turns into true-url.com/d/e/index.php
+             * part 0: fakeGetParam=fakeGetVal&scheme=http
+             * part 1: true-url.com/d/e/index.php?lol
+             **/
+            $parts = explode('/', ltrim($pathinfo, '/'), 2);
+            parse_str($parts[0], $fakeGet);
+
+            $reqUri = $this->getEnv('REQUEST_URI');
+            $urlWithoutProtocol = $parts[1];
+            if (false !== strpos($reqUri, '?')) {
+                $urlWithoutProtocol .= '?' . $this->getEnv('QUERY_STRING');
+            }
+
+            $scheme = isset($fakeGet['scheme']) ? $fakeGet['scheme'] : 'http';
+            $url = sprintf("%s://%s", $scheme, $urlWithoutProtocol);
+            $url = new Amcsi_HttpProxy_Url($url, $fakeGet);
+            $this->url = $url;
+        }
+        return $this->url;
     }
 
     public function getRequestUri()
@@ -58,33 +97,6 @@ class Amcsi_HttpProxy_Env
             }
         }
         return $this->hostOrIp;
-    }
-
-    /**
-     * getUrlObj 
-     * 
-     * @access public
-     * @return Amcsi_HttpProxy_Url
-     */
-    public function getUrlObj($apacheRewriteStyle)
-    {
-        $url = $this->getParam('_url');
-        if (!$url) {
-            $url = $this->getParam('url');
-        }
-        if ($apacheRewriteStyle) {
-            // pass the query params found in REQUEST_URI to the target url.
-
-            // this is a hack, as I do not know how to rewrite a url an
-            // apache in a way that it is URL escaped.
-            // anyone who does know: please contribute the info
-            $parts = explode('?', $this->getRequestUri(), 2);
-            if (isset($parts[1])) {
-                $url .= '?' . $parts[1];
-            }
-        }
-        $url = new Amcsi_HttpProxy_Url($url, $apacheRewriteStyle);
-        return $url;
     }
 
     public function getInput()

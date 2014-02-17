@@ -7,11 +7,14 @@ class Amcsi_HttpProxy_Rewriter
     protected $proxyUrl;
 
     public function __construct(
-        Amcsi_HttpProxy_Url $url,
-        Amcsi_HttpProxy_Env $env
+        Amcsi_HttpProxy_Env $env,
+        Amcsi_HttpProxy_Url $url = null
     ) {
-        $this->url = $url;
         $this->env = $env;
+        if (!$url) {
+            $url = $env->getUrlObj();
+        }
+        $this->url = $url;
     }
 
     /**
