@@ -1,4 +1,14 @@
 <?php
+/**
+ * Amcsi_HttpProxy_Env_Current 
+ * 
+ * @uses Amcsi
+ * @uses _HttpProxy_Env
+ * @package 
+ * @version 
+ * @copyright 
+ * @license 
+ */
 class Amcsi_HttpProxy_Env_Current extends Amcsi_HttpProxy_Env
 {
 
