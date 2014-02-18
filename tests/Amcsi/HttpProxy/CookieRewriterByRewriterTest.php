@@ -23,6 +23,7 @@ class CookieRewriterByRewriterTest extends PHPUnit_Framework_TestCase
 
         $server = array(
             'REQUEST_URI' => '/a/b/c/proxy.php/opts=u&scheme=http/target-url.com/d/e/z.php?foo=bar',
+            'SCRIPT_NAME' => '/a/b/c/proxy.php',
             'PATH_INFO' => '/opts=u&scheme=http/target-url.com/d/e/z.php',
             'QUERY_STRING' => 'foo=bar',
             'HTTP_HOST' => 'proxy-url.com',

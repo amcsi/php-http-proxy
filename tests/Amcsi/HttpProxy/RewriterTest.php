@@ -8,8 +8,9 @@ class RewriterTest extends PHPUnit_Framework_TestCase
     public function setUp()
     {
         $server = array(
-            'REQUEST_URI' => '/a/b/c/proxy.php/opts=u&scheme=http/target-url.com/d/e/z.php?foo=bar',
-            'PATH_INFO' => '/opts=u&scheme=http/target-url.com/d/e/z.php',
+            'REQUEST_URI' => '/a/b/c/proxy.php/opts=u&scheme=http/target-url.com/d/e/x%20y/z.php?foo=bar',
+            'SCRIPT_NAME' => '/a/b/c/proxy.php',
+            'PATH_INFO' => '/opts=u&scheme=http/target-url.com/d/e/x y/z.php',
             'QUERY_STRING' => 'foo=bar',
             'HTTP_HOST' => 'proxy-url.com',
         );
@@ -30,7 +31,7 @@ class RewriterTest extends PHPUnit_Framework_TestCase
 
     public function testGetUrlString()
     {
-        $expected = 'http://target-url.com/d/e/z.php?foo=bar';
+        $expected = 'http://target-url.com/d/e/x%20y/z.php?foo=bar';
         $this->assertEquals($expected, (string) $this->env->getUrlObj());
     }
 
