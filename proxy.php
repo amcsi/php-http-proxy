@@ -23,5 +23,5 @@ $proxy = new Amcsi_HttpProxy_Proxy($env);
 
 $proxy->setConf($conf);
 
-$proxy->dispatch();
+return $proxy->dispatch();
 

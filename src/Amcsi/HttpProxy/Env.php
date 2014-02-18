@@ -119,14 +119,17 @@ class Amcsi_HttpProxy_Env
      */
     public function getScriptName()
     {
-        $reqUri = $this->getRequestUri();
-        list($reqUriWithoutQuery) = explode('?', $reqUri, 2);
-        $pathInfo = $this->getPathInfo();
-        $useReqUri = $reqUriWithoutQuery;
+        $scriptName = $this->getEnv('SCRIPT_NAME');
+        if (!$scriptName) {
+            $reqUri = $this->getRequestUri();
+            list($reqUriWithoutQuery) = explode('?', $reqUri, 2);
+            $pathInfo = $this->getPathInfo();
+            $useReqUri = $reqUriWithoutQuery;
 
-        // subtract the pathinfo part from the request uri (without query)
-        // to get the script name.
-        $scriptName = str_replace($pathInfo, '', $useReqUri);
+            // subtract the pathinfo part from the request uri (without query)
+            // to get the script name.
+            $scriptName = str_replace($pathInfo, '', $useReqUri, $count);
+        }
         return $scriptName;
     }
 
