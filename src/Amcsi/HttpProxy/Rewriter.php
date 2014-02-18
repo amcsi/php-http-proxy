@@ -61,6 +61,12 @@ class Amcsi_HttpProxy_Rewriter
         $ret['proxyPath']               = "$reqUriRemainingParts/";
         $ret['proxyHostPath']           = sprintf('%s%s/', $host, $reqUriRemainingParts);
         $ret['proxyProtocolHostPath']   = sprintf('http://%s%s/', $host, $reqUriRemainingParts);
+        $ret['proxyPhpUrl']             =   sprintf(
+                                                '%s://%s%s',
+                                                $parsedUrl['scheme'],
+                                                $host,
+                                                $this->env->getScriptName()
+                                            );
         $ret['trueHostPathQuery']       = $trueHostPathQuery;
         $ret['trueScheme']              = $parsedUrl['scheme'];
         return $ret;
@@ -72,7 +78,8 @@ class Amcsi_HttpProxy_Rewriter
      * @access public
      * @return string
      */
-    public function getProxyUrl() {
+    public function getProxyUrl()
+    {
         if (!$this->proxyUrl) {
             $schema = $this->env->isHttps() ?  'https://' : 'http://';
             $host = $this->env->getHostOrIp();
@@ -119,12 +126,13 @@ class Amcsi_HttpProxy_Rewriter
      * @access protected
      * @return string
      */
-    protected function _proxifyReplaceCallback($match) {
+    protected function _proxifyReplaceCallback($match)
+    {
         static $ignoreUrlParts = array ();
         static $ignoreExtensions = array ();
         if (!$ignoreUrlParts) {
         }
-        $toReplace = $match[2];
+        $toReplace = html_entity_decode($match[2]);
         $replacement = null;
         $pathinfo = pathinfo($match[2]);
         /**
@@ -142,7 +150,7 @@ class Amcsi_HttpProxy_Rewriter
         if (!$replacement) {
             $replacement = $this->replaceUrl($match[2]);
         }
-        $ret = $match[1] . $replacement . $match[3];
+        $ret = $match[1] . htmlspecialchars($replacement) . $match[3];
         return $ret;
     }
 
@@ -194,12 +202,13 @@ class Amcsi_HttpProxy_Rewriter
      * @access protected
      * @return void
      */
-    protected function reverseReplaceUrl($toReplace)
+    public function reverseReplaceUrl($toReplace)
     {
+        $replacement = $toReplace;
+        $rewriteDetails = $this->getRewriteDetails();
         if ($this->isApacheRewriteStyle()) {
-            $reqUri = $this->getRequestUri();
+            $reqUri = $this->env->getRequestUri();
             $host = $this->env->getHostOrIp();
-            $rewriteDetails = $this->url->getRewriteDetails($reqUri, $host);
             $replaceThese = array(
                 "http://$rewriteDetails[proxyHostPath]",
                 "https://$rewriteDetails[proxyHostPath]",
@@ -212,15 +221,14 @@ class Amcsi_HttpProxy_Rewriter
             $replacement = str_replace($replaceThese, $rewrite, $toReplace);
         }
         else {
-            $parsedUrl = parse_url($toReplace);
-            parse_str($parsedUrl['query'], $query);
-            if (isset($query['_url'])) {
-                $url = $query['_url'];
-            } elseif (isset($query['url'])) {
-                $url = $query['url'];
-            }
-            if ($url) {
-                $replacement = $url;
+            $proxyPhpUrl = $rewriteDetails['proxyPhpUrl'];
+            $pathInfoWithGet = str_replace($proxyPhpUrl, '', $toReplace, $count);
+            if ($count) {
+                $newUrl = Amcsi_HttpProxy_Url::newInstanceByPathFromFakeGet(
+                    $pathInfoWithGet
+                );
+                $replacement = (string) $newUrl;
+            } else {
             }
         }
         return $replacement;
