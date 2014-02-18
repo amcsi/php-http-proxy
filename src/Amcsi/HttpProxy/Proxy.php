@@ -123,8 +123,7 @@ class Amcsi_HttpProxy_Proxy
             $this->url = $url;
             $rewriter = new Amcsi_HttpProxy_Rewriter($this->env, $url);
             $this->rewriter = $rewriter;
-            $this->request($url);
-            exit;
+            return $this->request($url);
         }
         else {
             echo 'Forbidden';
@@ -177,7 +176,7 @@ class Amcsi_HttpProxy_Proxy
 
         $this->debugLog('response headers', $response->getHeaders());
         $this->debugLog('response content', $response->getContent());
-        $this->response($response);
+        return $this->response($response);
     }
 
     public function response(Amcsi_HttpProxy_Response $response)
@@ -210,6 +209,7 @@ class Amcsi_HttpProxy_Proxy
                 }
             }
             echo $content;
+            return 0;
         }
         else {
             $lastError = error_get_last();
