@@ -183,9 +183,6 @@ class Amcsi_HttpProxy_Proxy
     {
         $content = $response->getContent();
         $responseHeaders = $response->getHeaders();
-        if ($this->isOptSet('u')) {
-            $content = $this->rewriter->proxify($content);
-        }
         if (false && !$content) {
             var_dump($reqHeaders);
             var_dump($opts);
@@ -193,10 +190,19 @@ class Amcsi_HttpProxy_Proxy
         }
         if (!empty($responseHeaders)) {
             foreach ($responseHeaders as $index => $hrh) {
+                if (0 === strpos($hrh, 'Connection:')) {
+                    header("Connection: close");
+                    continue;
+                }
                 if (0 === strpos($hrh, 'Set-Cookie:')) {
                     $newHeader = $this->rewriter->rewriteCookieHeader($hrh);
                     header($newHeader, false);
                     continue;
+                }
+                if (0 === strpos($hrh, 'Content-Type')) {
+                    if ($this->isOptSet('u') && false !== strpos($hrh, 'text/')) {
+                        $content = $this->rewriter->proxify($content);
+                    }
                 }
                 if (0 === strpos($hrh, 'Location:') && $this->isOptSet('u')) {
                     $location = substr($hrh, 10);
