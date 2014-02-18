@@ -5,6 +5,7 @@ class Amcsi_HttpProxy_Rewriter
     protected $env;
 
     protected $proxyUrl;
+    protected $cookieRewriter;
 
     public function __construct(
         Amcsi_HttpProxy_Env $env,
@@ -22,6 +23,14 @@ class Amcsi_HttpProxy_Rewriter
         return $this->url->getParam($name);
     }
 
+    /**
+     * getRewriteDetails 
+     *
+     * @todo Cover by tests!
+     * 
+     * @access public
+     * @return void
+     */
     public function getRewriteDetails()
     {
         $reqUri = $this->env->getRequestUri();
@@ -54,21 +63,39 @@ class Amcsi_HttpProxy_Rewriter
         }
         $urlRemainingParts = join('/', $urlParts);
         $reqUriRemainingParts = join('/', $reqUriParts);
-        $targetHost = $this->env->getHostOrIp();
+        $proxyHost = $this->env->getHostOrIp();
         $trueHostPathQuery = "$urlRemainingParts/";
         $trueHostPathQuery = preg_replace('@^https?://@', '', $trueHostPathQuery);
+
+        $cookieBase = "$reqUriRemainingParts/";
+        if (!$this->isApacheRewriteStyle()) {
+            $cookieBase .= $this->url->getHostOrIp() . '/';
+        }
+
         $ret = array();
         $ret['proxyPath']               = "$reqUriRemainingParts/";
         $ret['proxyHostPath']           = sprintf('%s%s/', $host, $reqUriRemainingParts);
         $ret['proxyProtocolHostPath']   = sprintf('http://%s%s/', $host, $reqUriRemainingParts);
+        $ret['trueHostPathQuery']       = $trueHostPathQuery;
+        $ret['trueScheme']              = $parsedUrl['scheme'];
+        // # e.g. /a/b/c/proxy.php/opts=u&scheme=http/target-url.com/
+        $ret['cookieBase']              = $cookieBase;
+
+        /**
+         * for apache-rewriterule style only
+         */
+        # cut off from the beginning until the nearest slash, e.g. target-url.com/d/e/ => /d/e/
+        $ret['truePath']                = preg_replace('@^[^/]*@', '', $trueHostPathQuery);
+
+        /**
+         * for non-apache-rewriterule style only
+         */
         $ret['proxyPhpUrl']             =   sprintf(
                                                 '%s://%s%s',
                                                 $parsedUrl['scheme'],
                                                 $host,
                                                 $this->env->getScriptName()
                                             );
-        $ret['trueHostPathQuery']       = $trueHostPathQuery;
-        $ret['trueScheme']              = $parsedUrl['scheme'];
         return $ret;
     }
 
@@ -244,20 +271,35 @@ class Amcsi_HttpProxy_Rewriter
      */
     public function rewriteCookieHeader($cookieHeaderString)
     {
-        // filter so that the path would be right
-        $cookie = new Amcsi_HttpProxy_Cookie;
-        $targetHost = $this->env->getEnv('HTTP_HOST');
-        if (!$targetHost) {
-            $targetHost = $this->env->getEnv('SERVER_ADDR');
-        }
-        $cookie->setTargetHost($targetHost);
-        $cookie->setCookieHeaderValue(substr($cookieHeaderString, 12));
-        if ($this->isApacheRewriteStyle()) {
-            $rewriteDetails = $this->getRewriteDetails();
-            $cookie->setSourcePath($rewriteDetails['proxyPath']);
-        }
-        $ret = sprintf('Set-Cookie: %s', $cookie->getFilteredSetCookie());
+        list(,$cookieValue) = explode(': ', $cookieHeaderString, 2);
+        $cookieRewriter = $this->getCookieRewriter();
+        $ret = sprintf(
+            'Set-Cookie: %s',
+            $cookieRewriter->getFilteredSetCookie($cookieValue)
+        );
         return $ret;
+    }
+
+    public function getCookieRewriter()
+    {
+        if (!$this->cookieRewriter) {
+            // filter so that the path would be right
+            $cookieRewriter = new Amcsi_HttpProxy_CookieRewriter;
+            $targetHost = $this->env->getEnv('HTTP_HOST');
+            if (!$targetHost) {
+                $targetHost = $this->env->getEnv('SERVER_ADDR');
+            }
+            $rewriteDetails = $this->getRewriteDetails();
+            $cookieRewriter->setTargetHost($targetHost);
+            $cookieRewriter->setSourcePath($rewriteDetails['cookieBase']);
+            if (!$this->isApacheRewriteStyle()) {
+                $cookieRewriter->setTargetPath('/');
+            } else {
+                $cookieRewriter->setTargetPath($rewriteDetails['truePath']);
+            }
+            $this->cookieRewriter = $cookieRewriter;
+        }
+        return $this->cookieRewriter;
     }
 
     public function isApacheRewriteStyle()
