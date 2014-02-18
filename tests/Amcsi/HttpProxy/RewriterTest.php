@@ -1,5 +1,5 @@
 <?php
-class ApacheRewriterTest extends PHPUnit_Framework_TestCase
+class RewriterTest extends PHPUnit_Framework_TestCase
 {
 
     private $env;
