@@ -20,6 +20,30 @@ class Amcsi_HttpProxy_Url
         $this->fakeGet = $fakeGet;
     }
 
+    /**
+     * newInstanceByPathFromFakeGet 
+     *
+     * Creates a new instance of this class by a url subpath
+     * beginning from the fakeGet part.
+     *
+     * e.g. /opts=u&scheme=http/target-url.com/d/e/lol.php?hey
+     * 
+     * @param string $path 
+     * @static
+     * @access public
+     * @return self
+     */
+    public static function newInstanceByPathFromFakeGet($path)
+    {
+        $trimmed = ltrim($path, '/');
+        $parts = explode('/', $trimmed, 2);
+        parse_str($parts[0], $fakeGet);
+        $scheme = isset($fakeGet['scheme']) ? $fakeGet['scheme'] : 'http';
+        $url = sprintf('%s://%s', $scheme, $parts[1]);
+
+        return new self($url, $fakeGet);
+    }
+
     public function isOptSet($optChar)
     {
         $optChars = $this->getOptChars();

@@ -1,5 +1,15 @@
 <?php
-class ApacheRewriterTest extends PHPUnit_Framework_TestCase
+/**
+ * RewriterTest, but with Apache style RewriteRules in place
+ * 
+ * @uses PHPUnit
+ * @uses _Framework_TestCase
+ * @package 
+ * @version 
+ * @copyright 
+ * @license 
+ */
+class RewriterTest extends PHPUnit_Framework_TestCase
 {
 
     private $env;
@@ -8,7 +18,8 @@ class ApacheRewriterTest extends PHPUnit_Framework_TestCase
     public function setUp()
     {
         $server = array(
-            'REQUEST_URI' => '/a/b/c/proxy.php/opts=u&scheme=http/target-url.com/d/e/z.php?foo=bar',
+            'REDIRECT_URL' => '/a/b/c/z.php',
+            'REQUEST_URI' => '/a/b/c/z.php?foo=bar',
             'PATH_INFO' => '/opts=u&scheme=http/target-url.com/d/e/z.php',
             'QUERY_STRING' => 'foo=bar',
             'HTTP_HOST' => 'proxy-url.com',
@@ -58,21 +69,21 @@ class ApacheRewriterTest extends PHPUnit_Framework_TestCase
         $ret = array(
             array (
                 'http://target-url.com/d/e/images/someimage.png?foo=bar',
-                'http://proxy-url.com/a/b/c/proxy.php/opts=u&scheme=http/target-url.com/d/e/images/someimage.png?foo=bar',
+                'http://proxy-url.com/a/b/c/images/someimage.png?foo=bar',
             ),
+            /*
             array (
                 // https
                 'https://target-url.com/d/e/images/someimage.png?foo=bar',
-                'http://proxy-url.com/a/b/c/proxy.php/opts=u&scheme=https/target-url.com/d/e/images/someimage.png?foo=bar',
+                'http://proxy-url.com/a/b/c/images/someimage.png?foo=bar',
             ),
+             */
             array (
                 // different host
                 'http://different-url.com/d/e/images/someimage.png?foo=bar',
-                'http://proxy-url.com/a/b/c/proxy.php/opts=u&scheme=http/different-url.com/d/e/images/someimage.png?foo=bar',
+                'http://different-url.com/d/e/images/someimage.png?foo=bar',
             ),
         );
         return $ret;
     }
 }
-
-
