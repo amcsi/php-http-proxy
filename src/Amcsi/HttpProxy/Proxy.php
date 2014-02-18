@@ -209,7 +209,6 @@ class Amcsi_HttpProxy_Proxy
                     header($hrh);
                 }
             }
-            header(sprintf("Content-Length: %d", strlen($content)));
             echo $content;
         }
         else {
