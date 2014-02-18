@@ -129,10 +129,15 @@ class Amcsi_HttpProxy_Url
         return isset($this->fakeGet[$name]) ? $this->fakeGet[$name] : null;
     }
 
-    public function getHost()
+    public function getHostOrIp()
     {
         $parsedUrl = parse_url($this->url);
         return $parsedUrl['host'];
+    }
+
+    public function getHost()
+    {
+        return $this->getHostOrIp();
     }
 
     public function __toString()

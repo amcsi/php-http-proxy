@@ -2,20 +2,12 @@
 /**
  * Class for rewriting cookies
  **/
-class Amcsi_HttpProxy_Cookie
+class Amcsi_HttpProxy_CookieRewriter
 {
     private $cookieHeaderValue;
     private $sourcePath;
     private $targetPath;
     private $targetHost;
-
-    public function __construct()
-    {
-        trigger_error(
-            "This class is deprecated. Use CookieRewriter instead.",
-            16384
-        );
-    }
 
     public function setSourcePath($value)
     {
@@ -50,15 +42,9 @@ class Amcsi_HttpProxy_Cookie
         return $this;
     }
 
-    public function setCookieHeaderValue($value)
+    public function getFilteredSetCookie($setCookie)
     {
-        $this->cookieHeaderValue = $value;
-        return $this;
-    }
-
-    public function getFilteredSetCookie()
-    {
-        $oldParts = explode('; ', $this->cookieHeaderValue);
+        $oldParts = explode('; ', $setCookie);
         $newParts = $oldParts;
         foreach ($newParts as &$part) {
             if (0 === strpos($part, 'path=')) {

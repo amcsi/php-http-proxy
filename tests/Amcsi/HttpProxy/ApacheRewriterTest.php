@@ -9,7 +9,7 @@
  * @copyright 
  * @license 
  */
-class RewriterTest extends PHPUnit_Framework_TestCase
+class ApacheRewriterTest extends PHPUnit_Framework_TestCase
 {
 
     private $env;
