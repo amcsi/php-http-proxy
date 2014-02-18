@@ -9,6 +9,7 @@ class Amcsi_HttpProxy_HttpClient_Curl extends Amcsi_HttpProxy_HttpClient_Abstrac
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_HEADER, true);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
         if ($this->method && 'GET' !== strtoupper($this->method)) {
             curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
             if ($this->content) {
@@ -21,7 +22,9 @@ class Amcsi_HttpProxy_HttpClient_Curl extends Amcsi_HttpProxy_HttpClient_Abstrac
             curl_setopt($ch, CURLOPT_CONNECTTIMEOUT_MS, $this->timeout * 1000);
         }
         $result = curl_exec($ch);
-        list($header, $responseContent) = explode("\r\n\r\n" , $result , 2);
+        $headerContent = explode("\r\n\r\n" , $result , 2);
+        $header = $headerContent[0];
+        $responseContent = isset($headerContent[1]) ? $headerContent[1] : null;
         $responseHeaders = explode("\r\n", $header);
         $response = new Amcsi_HttpProxy_Response(
             $responseContent,
