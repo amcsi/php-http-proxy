@@ -44,22 +44,60 @@ class Amcsi_HttpProxy_Env
     public function getUrlObj()
     {
         if (!$this->url) {
-            $pathinfo = $this->getPathInfo();
-            if (!$pathinfo) {
-                /**
-                 * PATH_INFO should be existing, so this bit of fallback
-                 * code should probably actually be deleted.
-                 **/
 
-                if (strpos(
-                    $reqUri = $this->getRequestUri(),
-                    $scriptName = $this->getEnv('SCRIPT_NAME'))
+            /**
+             * We can't just use PATH_INFO unfortunately as it has url entities
+             * decoded. We must use REQUEST_URI that keeps url encoding and
+             * figure out a new, fake PATH_INFO that does contain url encoded characters.
+             **/
+            $reqUri = $this->getRequestUri();
+            if (0 === strpos(
+                $reqUri,
+                $scriptName = $this->getEnv('SCRIPT_NAME'))
+            ) {
+                $strlen = strlen($scriptName);
+                $pathInfoWithGet = substr($reqUri, $strlen);
+                $parts = explode('?', $pathInfoWithGet, 2);
+                # PATH_INFO, but keeping the URL encoded stuff!
+                $pathInfo = $parts[0];
+                $qs = isset($parts[1]) ? $parts[1] : null;
+            } else if ($redUrl = $this->getEnv('REDIRECT_URL')) {
+                $parts = explode('?', $reqUri, 2);
+                $reqUriWithoutQuery = $parts[0];
+                $qs = isset($parts[1]) ? $parts[1] : null;
+
+                $reqUriPathParts = explode('/', $reqUriWithoutQuery);
+
+                $realPathInfo = $this->getPathInfo();
+                $realPathInfoPathParts = explode('/', $realPathInfo); 
+
+                # redirect url parts
+                $redUrlPathParts = explode('/', $redUrl);
+
+                $rebuildPathInfoParts = array();
+
+                while (
+                    $realPathInfoPathParts &&
+                    end($realPathInfoPathParts) === end($redUrlPathParts)
                 ) {
-                    $strlen = strlen($scriptName);
-                    $pathInfo = substr($reqUri, $strlen);
-                } else if ($redUrl = $this->getEnv('REDIRECT_URL')) {
-                    // 
+                    array_pop($realPathInfoPathParts);
+                    array_pop($redUrlPathParts);
+
+                    // now take the part off the REQUEST_URI parts as it still has
+                    // the url encoding entact.
+                    $part = array_pop($reqUriPathParts);
+
+                    array_unshift($rebuildPathInfoParts, $part);
                 }
+
+                $pathInfo = sprintf(
+                    '%s/%s',
+                    join('/', $realPathInfoPathParts),
+                    join('/', $rebuildPathInfoParts)
+                );
+            } else {
+                var_dump($reqUri, $scriptName);
+                throw new LogicException("Cannot determine path info");
             }
 
             /**
@@ -68,7 +106,7 @@ class Amcsi_HttpProxy_Env
              * part 0: fakeGetParam=fakeGetVal&scheme=http
              * part 1: true-url.com/d/e/index.php?lol
              **/
-            $parts = explode('/', ltrim($pathinfo, '/'), 2);
+            $parts = explode('/', ltrim($pathInfo, '/'), 2);
             parse_str($parts[0], $fakeGet);
 
             $reqUri = $this->getEnv('REQUEST_URI');
