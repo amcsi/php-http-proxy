@@ -137,7 +137,7 @@ class Amcsi_HttpProxy_Proxy
         $reqHeaders = $this->env->getRequestHeaders();
         $headers = array ();
         foreach ($reqHeaders as $key => $val) {
-            if ('Host' == $key || 'Content-Length' == $key) {
+            if ('Host' == $key || 'Content-Length' == $key || 'Connection' == $key) {
                 continue;
             }
             if ('SOAPAction' == $key) {
@@ -148,6 +148,7 @@ class Amcsi_HttpProxy_Proxy
                 $headers[] = sprintf('%s: %s', $key, $reqHeaders[$key]);
             }
         }
+        $headers[] = 'Connection: close';
         $request = new Amcsi_HttpProxy_Request;
         $request->setUrl($url);
 
