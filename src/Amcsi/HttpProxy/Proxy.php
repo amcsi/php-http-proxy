@@ -191,7 +191,6 @@ class Amcsi_HttpProxy_Proxy
         if (!empty($responseHeaders)) {
             foreach ($responseHeaders as $index => $hrh) {
                 if (0 === strpos($hrh, 'Connection:')) {
-                    header("Connection: close");
                     continue;
                 }
                 if (0 === strpos($hrh, 'Set-Cookie:')) {
