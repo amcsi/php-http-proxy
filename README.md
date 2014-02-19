@@ -25,14 +25,26 @@ Usage
 
 This script can work in two ways:
 
-### GET style any url
+#### Anatomy of a proxy request
+
+### Standard style
 
 
-In the first case, you have the freedom to choose what URL to visit in your browser via query parameters.
+In this style, you have the freedom to choose what URL to visit in your browser via query parameters.
 
-Navigate to `http://path/to/this/project/proxy.php?url=http://url-of-choice.com` which will visit url-of-choice.com for you. Include the password as a query parameter of course.
+Navigate to `http://path/to/this/project/proxy.php/scheme=http&pass=<passwordGoesHere>/url-of-choice.com` which will visit `http://url-of-choice.com` for you.
 
-In case the `url` query parameter actually has a special meaning in the target website, you can also use the alternative `_url` key.
+First off, you can see that there is a slash (/) after the php file. It is the default apache behavior (even if `mod_rewrite` is disabled) that it executes the php script and adds what is remaining to `$_SERVER['PATH_INFO']`.
+
+Also note that after the slash after the script name comes a path part that looks like a query string. This is what I call "fake GET", and this allows us to pass data to our script without interfering with the real GET parameters that are to be forwarded when the proxy script makes the actual request.
+
+The important fake GET parameters for now are:
+
+* `pass` This is where you enter your password for the script
+* `scheme` This is the protocol without `://` used for the target URL.
+* `opts` Option characters. This will be mentioned later.
+
+After the fake GET parameters comes the actual URL to call, not including the protocol, but including the query string, and using real slashes for path separators.
 
 ### Rewriting style (part of a URL to another)
 
@@ -43,7 +55,7 @@ With this you can rewrite anything from say `http://domain-with-proxy.com/a/b/c/
 The recommended Apache RewriteRule for this is:
 
 ```apache
-RewriteRule ^a/b/c/(.*)$ /path/to/php-http-proxy/proxy.php?pass=<password>&opts=ur&url=http://the-true-domain.com/d/e/$1 [L,NE]
+RewriteRule ^a/b/c/(.*)$ /path/to/php-http-proxy/proxy.php/pass=<password>&opts=ur&scheme=http/the-true-domain.com/d/e/$1 [L,NE]
 ```
 
 The benefit of this is you can proxy everything from a given path onto a completely different URL. But you need to make up a RewriteRule per destination to rewrite to in advance.
@@ -53,9 +65,9 @@ Proxifying content
 
 Ah, but what good does serving proxified HTML or SOAP WSDL content do if inside them the links to resources won't work anyway?
 
-Well good news: the script also optionally rewrites headers and attributes in XML/HTML content to make sure everything possible goes through this proxy script.
+Well good news: the script also optionally rewrites headers and attributes in XML/HTML content to make sure everything possible goes through this proxy script. Even cookies!
 
-To enable this, include the `u` option character in the `opts` query parameter. For more information, read the [Extra options](#extra-options) section. If you are using the "Rewriting style", also include `r` as can be seen in the Rewriting style RewriteRule example.
+To enable this, include the `u` option character in the `opts` query parameter. For more information, read the [Extra options](#extra-options) section.
 
 Note that this will only work if:
 
@@ -65,20 +77,19 @@ Note that this will only work if:
 Also, JavaScript may not entirely work if it is relying on absolute URLs placed in variables in HTML `<script>` tags.
 
 A list of headers modified before requests are sent to the true url:
-
+c
 * By default: 
     * The target URL of course.
     * `Host` is rewritten to the target domain.
     * `Content-Type` is always force set.
     * `X-Forwarded-For` is set to the requester's IP address. If this field already existed, then according to the Apache documentation, the requester's IP address is instead appended to the list of IP addresses in this field.
-* If `r` is set:
     * `Referer` is proxified
 
 A list of headers modified before the response is sent back to the requester:
 
 * By default:
     * `Content-Type`. This is especially important if `u` is set and the content is rewritten.
-    * `Set-Cookie`. The domain and path are rewritten. If `r` is on, the script attempts to limit the path to the path where the rewrite rule begins to kick in, or make it even more restrictive. Otherwise the path is simply rewritten to `/` so it would be guaranteed to work. With these, cookies should be guaranteed to work.
+    * `Set-Cookie`. The domain and path are rewritten. When using the proxy script in the Standard style, remember having the slash after the name of the script file still makes apache execute the script; well according to HTTP rules the .php part has no special meaning, and since you have (/) separated parts following, it was easy to abuse the rules of HTTP for easy cookie proxying even when using the Standard proxying style.
     * `Transfer-Encoding`. If it is "chunked", it is discarded entirely. Some curl requests result in "chunked" content which breaks HTTP when sending that header out. So I'm removing it entirely. If anyone knows a better way of handling this, please say so.
 * If `u` is set:
     * The URLs in the content are attempted to be rewritten so any linked resource.
@@ -88,8 +99,6 @@ Extra options
 
 There are several options you can pass to do several things. Each option consists of a character and can be passed to the `opts` query parameter. The possible options are the following:
 
-* `p` POST should be taken into account when checking for REQUEST variables. Also, POST should be used for proxified urls. Usually you do not need this option.
-* `r` Take "Rewriting style" into account. Proxify several received headers that are URL related. When using the `u` option, do not rewrite all URLs, but only the ones that begin with the "target domain with path", and using the "Rewriting style" of course.
 * `u` Attempt to rewrite all XML/HTML attributes to make all urls in them proxified (encapsulating them in the proxy script).
 
 HTTP clients
