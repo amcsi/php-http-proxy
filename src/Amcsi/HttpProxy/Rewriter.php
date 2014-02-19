@@ -64,8 +64,8 @@ class Amcsi_HttpProxy_Rewriter
         $urlRemainingParts = join('/', $urlParts);
         $reqUriRemainingParts = join('/', $reqUriParts);
         $proxyHost = $this->env->getHostOrIp();
-        $trueHostPathQuery = "$urlRemainingParts/";
-        $trueHostPathQuery = preg_replace('@^https?://@', '', $trueHostPathQuery);
+        $trueUrlBase = "$urlRemainingParts/";
+        $trueHostPathQuery = preg_replace('@^https?://@', '', $trueUrlBase);
 
         $cookieBase = "$reqUriRemainingParts/";
         if (!$this->isApacheRewriteStyle()) {
@@ -73,11 +73,8 @@ class Amcsi_HttpProxy_Rewriter
         }
 
         $ret = array();
-        $ret['proxyPath']               = "$reqUriRemainingParts/";
-        $ret['proxyHostPath']           = sprintf('%s%s/', $host, $reqUriRemainingParts);
         $ret['proxyProtocolHostPath']   = sprintf('http://%s%s/', $host, $reqUriRemainingParts);
-        $ret['trueHostPathQuery']       = $trueHostPathQuery;
-        $ret['trueScheme']              = $parsedUrl['scheme'];
+        $ret['trueUrlBase']             = $trueUrlBase;
         // # e.g. /a/b/c/proxy.php/opts=u&scheme=http/target-url.com/
         $ret['cookieBase']              = $cookieBase;
 
@@ -195,13 +192,8 @@ class Amcsi_HttpProxy_Rewriter
         if ($this->isApacheRewriteStyle()) {
             $rewriteDetails = $this->getRewriteDetails();
 
-
-            $replaceThese = array(
-                "http://$rewriteDetails[trueHostPathQuery]",
-                "https://$rewriteDetails[trueHostPathQuery]",
-            );
             $replacement = str_replace(
-                $replaceThese,
+                $rewriteDetails['trueUrlBase'],
                 $rewriteDetails['proxyProtocolHostPath'],
                 $toReplace
             );
@@ -236,16 +228,12 @@ class Amcsi_HttpProxy_Rewriter
         if ($this->isApacheRewriteStyle()) {
             $reqUri = $this->env->getRequestUri();
             $host = $this->env->getHostOrIp();
-            $replaceThese = array(
-                "http://$rewriteDetails[proxyHostPath]",
-                "https://$rewriteDetails[proxyHostPath]",
+            $rewrite = $rewriteDetails['trueUrlBase'];
+            $replacement = str_replace(
+                $rewriteDetails['proxyProtocolHostPath'],
+                $rewrite,
+                $toReplace
             );
-            $rewrite = sprintf(
-                '%s://%s',
-                $rewriteDetails['trueScheme'],
-                $rewriteDetails['trueHostPathQuery']
-            );
-            $replacement = str_replace($replaceThese, $rewrite, $toReplace);
         }
         else {
             $proxyPhpUrl = $rewriteDetails['proxyPhpUrl'];
