@@ -177,11 +177,28 @@ class Amcsi_HttpProxy_Proxy
 
         $this->debugLog('response headers', $response->getHeaders());
         $this->debugLog('response content', $response->getContent());
-        return $this->response($response);
+        $proxyResponse = $this->response($request, $response);
+
+        foreach ($proxyResponse->getHeaders() as $header) {
+            header($header);
+        }
+        echo $proxyResponse->getContent();
+
+        exit(0);
     }
 
-    public function response(Amcsi_HttpProxy_Response $response)
-    {
+    /**
+     * response
+     * 
+     * @param Amcsi_HttpProxy_Request $request 
+     * @param Amcsi_HttpProxy_Response $response    Response received
+     * @access public
+     * @return Amcsi_HttpProxy_Response             Proxied response
+     */
+    public function response(
+        Amcsi_HttpProxy_Request $request,
+        Amcsi_HttpProxy_Response $response
+    ) {
         $content = $response->getContent();
         $responseHeaders = $response->getHeaders();
         if (false && !$content) {
@@ -189,6 +206,7 @@ class Amcsi_HttpProxy_Proxy
             var_dump($opts);
             var_dump($responseHeaders);
         }
+        $returnHeaders = array();
         if (!empty($responseHeaders)) {
             foreach ($responseHeaders as $index => $hrh) {
                 if (0 === strpos($hrh, 'Connection:')) {
@@ -196,7 +214,7 @@ class Amcsi_HttpProxy_Proxy
                 }
                 if (0 === strpos($hrh, 'Set-Cookie:')) {
                     $newHeader = $this->rewriter->rewriteCookieHeader($hrh);
-                    header($newHeader, false);
+                    $returnHeaders[] = $newHeader;
                     continue;
                 }
                 if (0 === strpos($hrh, 'Content-Type')) {
@@ -207,29 +225,29 @@ class Amcsi_HttpProxy_Proxy
                 if (0 === strpos($hrh, 'Location:') && $this->isOptSet('u')) {
                     $location = substr($hrh, 10);
                     $proxifiedLocation = $this->rewriter->replaceUrl($location);
-                    header("Location: $proxifiedLocation");
+                    $returnHeaders[] = "Location: $proxifiedLocation";
                 } elseif (0 === strpos($hrh, 'Transfer-Encoding: chunked')) {
                     continue;
                 } else if (0 !== strpos($hrh, 'Content-Length')) {
-                    header($hrh);
+                    $returnHeaders[] = $hrh;
                 }
             }
-            echo $content;
-            return 0;
         }
         else {
             $lastError = error_get_last();
             if (false !== strpos($lastError['message'], 'Connection timed out')) {
-                header('HTTP/1.1 504 Gateway Timeout');
+                $returnHeaders[] = 'HTTP/1.1 504 Gateway Timeout';
             }
             else {
                 ob_start();
                 trigger_error(print_r($lastError, true));
                 ob_end_clean();
-                header('HTTP/1.1 500 Internal Server Error');
+                $returnHeaders[] = 'HTTP/1.1 500 Internal Server Error';
             }
-            exit;
         }
+        $returnResponse = new Amcsi_HttpProxy_Response($content, $returnHeaders);
+
+        return $returnResponse;
     }
 
     public function debugLog($label, $value) {
