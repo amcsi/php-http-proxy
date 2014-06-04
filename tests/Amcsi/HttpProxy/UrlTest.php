@@ -14,5 +14,10 @@ class UrlTest extends PHPUnit_Framework_TestCase
     {
         unset($this->url);
     }
+
+    public function testNothing()
+    {
+        return $this->assertTrue(true);
+    }
 }
 

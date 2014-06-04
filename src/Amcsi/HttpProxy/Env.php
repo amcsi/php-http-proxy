@@ -96,7 +96,7 @@ class Amcsi_HttpProxy_Env
                     join('/', $rebuildPathInfoParts)
                 );
             } else {
-                var_dump($reqUri, $scriptName);
+                var_dump($reqUri, $scriptName, $this->server);
                 throw new LogicException("Cannot determine path info");
             }
 

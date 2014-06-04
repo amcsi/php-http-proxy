@@ -16,3 +16,11 @@ $conf['requirePassword'] = true;
 
 # Where debug logs should go. Off by default.
 $conf['debugLogFile'] = null;
+
+/**
+ * Array of callables accepting {@link Amcsi_HttpProxy_ContentFilterData} and
+ * as a parameter, and is expected to return:
+ *  1) A string if the response content should be changed to that.
+ *  2) NULL, if the response should not be modified
+ */
+$conf['contentFilters'] = array();

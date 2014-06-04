@@ -200,6 +200,26 @@ class Amcsi_HttpProxy_Proxy
         Amcsi_HttpProxy_Response $response
     ) {
         $content = $response->getContent();
+
+        if ($contentFilters = $this->config['contentFilters']) {
+            foreach ((array) $contentFilters as $contentFilter) {
+                if (is_callable($contentFilter)) {
+                    /**
+                     * $request and $response are not immutable, so clone them
+                     **/
+                    $contentFilterData = new Amcsi_HttpProxy_ContentFilterData(
+                        clone $request,
+                        clone $response
+                    );
+
+                    $result = call_user_func($contentFilter, $contentFilterData);
+                    if (is_string($result)) {
+                        $content = $result;
+                    }
+                }
+            }
+        }
+
         $responseHeaders = $response->getHeaders();
         if (false && !$content) {
             var_dump($reqHeaders);
