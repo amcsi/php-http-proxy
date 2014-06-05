@@ -24,3 +24,8 @@ $conf['debugLogFile'] = null;
  *  2) NULL, if the response should not be modified
  */
 $conf['contentFilters'] = array();
+
+/**
+ * Array of allowed base urls. Keep empty if all urls should be allowed.
+ */
+$conf['allowedBaseUrls'] = array();

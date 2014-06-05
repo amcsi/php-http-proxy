@@ -93,7 +93,7 @@ class Amcsi_HttpProxy_Proxy
         $ret = false;
         $isValid = (bool) filter_var($url, FILTER_VALIDATE_URL);
         if ($isValid) {
-            if (isset($this->config['allowedBaseUrls'])) {
+            if (!empty($this->config['allowedBaseUrls'])) {
                 foreach ((array) $this->config['allowedBaseUrls'] as $baseUrl) {
                     $parsedBaseUrl = parse_url($baseUrl);
                     $parsedUrl = parse_url($url);
@@ -103,8 +103,14 @@ class Amcsi_HttpProxy_Proxy
                              * Do the rtrim / / stuff so that the baseUrl would treat
                              * slash as its boundary
                              **/
-                            $urlPath = rtrim($parsedUrl['path'], '/') . '/';
-                            $baseUrlPath = rtrim($parsedBaseUrl['path'], '/') . '/';
+                            $parsedUrlPath = isset($parsedUrl['path']) ?
+                                $parsedUrl['path'] :
+                                null;
+                            $parsedBaseUrlPath = isset($parsedBaseUrl['path']) ?
+                                $parsedBaseUrl['path'] :
+                                null;
+                            $urlPath = rtrim($parsedUrlPath, '/') . '/';
+                            $baseUrlPath = rtrim($parsedBaseUrlPath, '/') . '/';
                             if (0 === strpos($urlPath, $baseUrlPath)) {
                                 $ret = true;
                                 break;
@@ -159,18 +165,52 @@ class Amcsi_HttpProxy_Proxy
             $this->_pass = $pass;
             ini_set('display_errors', true);
             $url = $this->getUrlObj();
-            $this->url = $url;
-            $rewriter = new Amcsi_HttpProxy_Rewriter($this->env, $url);
-            $this->rewriter = $rewriter;
-            return $this->request($url);
+            if ($this->isUrlAllowed($url)) {
+                $this->url = $url;
+                $rewriter = new Amcsi_HttpProxy_Rewriter($this->env, $url);
+                $this->rewriter = $rewriter;
+                $proxyResponse = $this->request($url);
+            } else {
+                $proxyResponse = $this->respondForbidden();
+            }
         }
         else {
-            echo 'Forbidden';
-            header ("HTTP/1.1 403 Forbidden");
-            exit;
+            $proxyResponse = $this->respondForbidden();
         }
+
+        foreach ($proxyResponse->getHeaders() as $header) {
+            header($header);
+        }
+        echo $proxyResponse->getContent();
+
+        exit(0);
     }
 
+    /**
+     * respondForbidden 
+     * 
+     * @access private
+     * @return Amcsi_HttpProxy_Response
+     */
+    private function respondForbidden()
+    {
+        $content = 'Forbidden';
+        $headers = array(
+            "HTTP/1.1 403 Forbidden",
+            "Content-Length: " . strlen($content)
+        );
+        $returnResponse = new Amcsi_HttpProxy_Response($content, $headers);
+
+        return $returnResponse;
+    }
+
+    /**
+     * request 
+     * 
+     * @param mixed $url 
+     * @access public
+     * @return Amcsi_HttpProxy_Response     The response to send back to the user
+     */
     public function request($url)
     {
         $reqHeaders = $this->env->getRequestHeaders();
@@ -218,12 +258,7 @@ class Amcsi_HttpProxy_Proxy
         $this->debugLog('response content', $response->getContent());
         $proxyResponse = $this->response($request, $response);
 
-        foreach ($proxyResponse->getHeaders() as $header) {
-            header($header);
-        }
-        echo $proxyResponse->getContent();
-
-        exit(0);
+        return $proxyResponse;
     }
 
     /**
