@@ -301,6 +301,9 @@ class Amcsi_HttpProxy_Proxy
             var_dump($responseHeaders);
         }
         $returnHeaders = array();
+
+        $recalculateContentLength = false;
+
         if (!empty($responseHeaders)) {
             foreach ($responseHeaders as $index => $hrh) {
                 if (0 === strpos($hrh, 'Connection:')) {
@@ -322,7 +325,10 @@ class Amcsi_HttpProxy_Proxy
                     $returnHeaders[] = "Location: $proxifiedLocation";
                 } elseif (0 === strpos($hrh, 'Transfer-Encoding: chunked')) {
                     continue;
-                } else if (0 !== strpos($hrh, 'Content-Length')) {
+                } else if (0 === strpos(strtolower($hrh), 'content-length')) {
+                    $recalculateContentLength = true;
+                    continue;
+                } else {
                     $returnHeaders[] = $hrh;
                 }
             }
@@ -338,6 +344,9 @@ class Amcsi_HttpProxy_Proxy
                 ob_end_clean();
                 $returnHeaders[] = 'HTTP/1.1 500 Internal Server Error';
             }
+        }
+        if ($recalculateContentLength) {
+            $returnHeaders[] = "Content-Length: " . strlen($content);
         }
         $returnResponse = new Amcsi_HttpProxy_Response($content, $returnHeaders);
 
