@@ -42,5 +42,26 @@ class Amcsi_HttpProxy_Response
     {
         return $this->getContent();
     }
+
+    /**
+     * Returns whether the content is gzipped
+     * 
+     * @access public
+     * @return boolean
+     */
+    public function isGzipped()
+    {
+        $ret = false;
+        foreach ($this->getHeaders() as $header) {
+            if (0 === strpos(strtolower($header), 'content-encoding')) {
+                if (false !== strpos($header, 'gzip')) {
+                    $ret = true;
+                }
+                break;
+            }
+        }
+
+        return $ret;
+    }
 }
 

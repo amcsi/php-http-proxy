@@ -22,6 +22,10 @@ $conf['debugLogFile'] = null;
  * as a parameter, and is expected to return:
  *  1) A string if the response content should be changed to that.
  *  2) NULL, if the response should not be modified
+ *
+ *  It is recommended to call {@link Amcsi_HttpProxy_ContentFilterData::encodeContent()}
+ *  on the string that is to be returned, so that it encodes the data to the same
+ *  encoding as it was received e.g. gzip
  */
 $conf['contentFilters'] = array();
 

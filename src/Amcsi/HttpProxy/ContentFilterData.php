@@ -30,4 +30,29 @@ class Amcsi_HttpProxy_ContentFilterData
     {
         return $this->response->getContent();
     }
+
+    /**
+     * getResponseContentDecoded 
+     * 
+     * @access public
+     * @return string
+     */
+    public function getResponseContentDecoded()
+    {
+        $content = $this->getResponseContent();
+
+        return $this->response->isGzipped() ? gzdecode($content) : $content;
+    }
+
+    /**
+     * encodeContent 
+     * 
+     * @param string $content 
+     * @access public
+     * @return string
+     */
+    public function encodeContent($content)
+    {
+        return $this->response->isGzipped() ? gzencode($content) : $content;
+    }
 }
