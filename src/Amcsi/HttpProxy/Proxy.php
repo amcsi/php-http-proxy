@@ -81,6 +81,45 @@ class Amcsi_HttpProxy_Proxy
         return $this->url->isOptSet($optChar);
     }
 
+    /**
+     * Check if the requested URL is allowed to be requested 
+     * 
+     * @param string $url 
+     * @access private
+     * @return boolean
+     */
+    private function isUrlAllowed($url)
+    {
+        $ret = false;
+        $isValid = (bool) filter_var($url, FILTER_VALIDATE_URL);
+        if ($isValid) {
+            if (isset($this->config['allowedBaseUrls'])) {
+                foreach ((array) $this->config['allowedBaseUrls'] as $baseUrl) {
+                    $parsedBaseUrl = parse_url($baseUrl);
+                    $parsedUrl = parse_url($url);
+                    if ($parsedUrl['scheme'] === $parsedBaseUrl['scheme']) {
+                        if ($parsedUrl['host'] === $parsedBaseUrl['host']) {
+                            /**
+                             * Do the rtrim / / stuff so that the baseUrl would treat
+                             * slash as its boundary
+                             **/
+                            $urlPath = rtrim($parsedUrl['path'], '/') . '/';
+                            $baseUrlPath = rtrim($parsedBaseUrl['path'], '/') . '/';
+                            if (0 === strpos($urlPath, $baseUrlPath)) {
+                                $ret = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+            } else {
+                $ret = true;
+            }
+        }
+
+        return $ret;
+    }
+
     public function setOptsString($string)
     {
         $optChars = array();

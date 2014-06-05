@@ -76,5 +76,70 @@ class ProxyTest extends PHPUnit_Framework_TestCase
 
         $this->assertSame('c-LOL-t', $proxyResponse->getContent());
     }
+
+    /**
+     * testIsUrlAllowed 
+     * 
+     * @dataProvider urlProvider
+     * @return void
+     */
+    public function testIsUrlAllowed($baseUrl, $url, $expected)
+    {
+        $proxy = $this->proxy;
+        $proxy->setConf(array(
+            'allowedBaseUrls' => $baseUrl
+        ));
+        $method = new ReflectionMethod($proxy, 'isUrlAllowed');
+        $method->setAccessible(true);
+        $result = $method->invoke($proxy, $url);
+
+        $this->assertSame($expected, $result);
+    }
+
+    public function urlProvider()
+    {
+        return array(
+            array (
+                'http://some-host',
+                'https://some-host/bla',
+                false,
+            ),
+            array (
+                'http://some-host/bla',
+                'http://some-host/bla/yo',
+                true,
+            ),
+            array (
+                'http://some-host/bla',
+                'http://some-host/bla/yo/more',
+                true,
+            ),
+            array (
+                'http://some-host/bla',
+                'http://some-host/foo',
+                false,
+            ),
+            array (
+                'http://some-host/bla',
+                array('http://some-host/foo', 'http://some-host/bla/yo'),
+                false,
+            ),
+            array (
+                'http://some-host/bla',
+                'http://some-host/blabla',
+                false,
+            ),
+            array (
+                'http://some-host/bla',
+                'http://some-other-host/bla',
+                false,
+            ),
+            array (
+                'http://some-host/bla',
+                'https://some-host/bla',
+                false,
+            ),
+        );
+    }
 }
 
