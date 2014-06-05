@@ -5,6 +5,8 @@ require_once "$basePath/vendor/autoload.php";
 ini_set('display_errors', true);
 error_reporting(E_ALL);
 
+require_once "$basePath/include/funcs.php";
+
 $configFile = "$basePath/include/config.php";
 $configDistFile = "$basePath/include/config.dist.php";
 require $configDistFile;
