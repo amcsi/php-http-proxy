@@ -7,10 +7,9 @@ Then this fake PHP HTTP Proxy project is for you!
 Installation
 ---
 
-
-#### Via git:
-
-TBD
+1. Clone project with Git or use `composer create-project <...>`.
+1. Make sure `composer` is installed globally. https://getcomposer.org/download/
+1. Go to the project directory in CLI and run: `composer install`.
 
 Security notes
 ---
