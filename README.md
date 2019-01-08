@@ -1,5 +1,8 @@
 # PHP HTTP Proxy
 
+
+[![Build Status](https://travis-ci.org/amcsi/php-http-proxy.png?branch=master)](https://travis-ci.org/amcsi/php-http-proxy)
+
 Need to be able to forward proxy HTTP requests for webservices or just serving HTML? Does `mod_proxy` not happen to be available, nor are you able to ask the sysadmin to enable it? No SSH access for setting up a real HTTP proxy, or does the firewall happen to block all the connections for you?
 
 Then this fake PHP HTTP Proxy project is for you!
